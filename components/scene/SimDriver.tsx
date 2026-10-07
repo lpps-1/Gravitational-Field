@@ -1,48 +1,95 @@
 "use client";
 
 import { useFrame } from "@react-three/fiber";
-import { useEffect } from "react";
-import { dilationFactor } from "@/lib/physics";
-import { sim, useLab } from "@/lib/store";
+import { useEffect, useRef } from "react";
+import { MIRAJ_EXPAND_SECONDS, MIRAJ_FOLD_SECONDS, MIRAJ_HOLD_SECONDS, MIRAJ_TOTAL_SECONDS, dilationFactor } from "@/lib/physics";
+import { CLOCK_SAMPLES, CLOCK_SAMPLE_SECONDS, resetClockState, sim, useLab } from "@/lib/store";
 
-/** Seconds for the Miraj sequence to run each phase (expand, then fold). */
-const EXPAND_SECONDS = 1.6;
-const FOLD_SECONDS = 2.6;
+/** Longest animation step: below 20 fps the animation slows down instead of jumping. */
+const MAX_STEP = 1 / 20;
+/** Longest clock step: clocks catch up after a stall, but never by more than this. */
+const MAX_CLOCK_STEP = 0.25;
+/** Duration of one "Step" while paused. */
+const STEP_SECONDS = 1 / 30;
+/** Unfolding plays back faster than folding. */
+const REVERSE_RATE = 2;
 
 /**
  * Advances the shared simulation state once per frame, before anything else
- * renders (negative priority), so every module reads consistent values.
+ * (priority -2), so every module reads the same time step and phases.
  */
 export function SimDriver() {
   const clockResets = useLab((s) => s.clockResets);
+  const resets = useLab((s) => s.resets);
+  const steps = useLab((s) => s.steps);
+  const pendingSteps = useRef(0);
 
   useEffect(() => {
-    if (clockResets === 0) return;
-    sim.clockA = 0;
-    sim.clockB = 0;
+    if (clockResets > 0) resetClockState();
   }, [clockResets]);
 
-  useFrame((_, rawDelta) => {
-    // Clamp only the *animation* step; clocks still use the true delta below.
-    const dt = Math.min(rawDelta, 0.1);
-    const { mass, miraj } = useLab.getState();
+  useEffect(() => {
+    if (resets === 0) return;
+    sim.mirajTime = 0;
+    sim.expand = 0;
+    sim.fold = 0;
+    sim.lastShot = null;
+    sim.transits = 0;
+  }, [resets]);
 
-    // Ease the visible mass toward the slider value.
+  useEffect(() => {
+    if (steps > 0) pendingSteps.current += 1;
+  }, [steps]);
+
+  useFrame((_, raw) => {
+    const { mass, miraj, paused, speed } = useLab.getState();
+
+    let dt: number;
+    let clockDt: number;
+    if (paused) {
+      dt = clockDt = pendingSteps.current > 0 ? STEP_SECONDS * speed : 0;
+      pendingSteps.current = Math.max(0, pendingSteps.current - 1);
+    } else {
+      pendingSteps.current = 0;
+      dt = Math.min(raw, MAX_STEP) * speed;
+      clockDt = Math.min(raw, MAX_CLOCK_STEP) * speed;
+    }
+    sim.dt = dt;
+
+    // The fabric follows the slider in real time, even while paused, so the
+    // effect of a change is visible before pressing Play.
     const target = mass / 100;
-    sim.m += (target - sim.m) * (1 - Math.exp(-dt * 5));
+    sim.m += (target - sim.m) * (1 - Math.exp(-Math.min(raw, 0.1) * 5));
     if (Math.abs(target - sim.m) < 1e-4) sim.m = target;
 
-    // Miraj sequence: expand the skies, then fold them. Reverse on disengage.
-    const goal = miraj ? 2 : 0;
-    const rate = sim.miraj < 1 || (sim.miraj === 1 && !miraj) ? 1 / EXPAND_SECONDS : 1 / FOLD_SECONDS;
-    if (sim.miraj < goal) sim.miraj = Math.min(goal, sim.miraj + dt * rate);
-    else if (sim.miraj > goal) sim.miraj = Math.max(goal, sim.miraj - dt * rate);
+    // Miraj timeline: separate the skies, hold, fold. Reverse on disengage.
+    if (miraj) sim.mirajTime = Math.min(MIRAJ_TOTAL_SECONDS, sim.mirajTime + dt);
+    else sim.mirajTime = Math.max(0, sim.mirajTime - dt * REVERSE_RATE);
+    sim.expand = smooth(Math.min(1, sim.mirajTime / MIRAJ_EXPAND_SECONDS));
+    sim.fold = Math.min(1, Math.max(0, (sim.mirajTime - MIRAJ_EXPAND_SECONDS - MIRAJ_HOLD_SECONDS) / MIRAJ_FOLD_SECONDS));
 
-    // Time dilation. Clock A is the far-away observer: one second per second.
+    // Time dilation. Clock A is far away: one second per second.
     sim.rateB = dilationFactor(sim.m);
-    sim.clockA += rawDelta;
-    sim.clockB += rawDelta * sim.rateB;
-  }, -1);
+    sim.clockA += clockDt;
+    sim.clockB += clockDt * sim.rateB;
+
+    sim.historyTimer += clockDt;
+    while (sim.historyTimer >= CLOCK_SAMPLE_SECONDS) {
+      sim.historyTimer -= CLOCK_SAMPLE_SECONDS;
+      if (sim.historyCount === CLOCK_SAMPLES) {
+        sim.historyA.copyWithin(0, 1);
+        sim.historyB.copyWithin(0, 1);
+        sim.historyCount--;
+      }
+      sim.historyA[sim.historyCount] = sim.clockA;
+      sim.historyB[sim.historyCount] = sim.clockB;
+      sim.historyCount++;
+    }
+  }, -2);
 
   return null;
+}
+
+function smooth(t: number) {
+  return t * t * (3 - 2 * t);
 }
