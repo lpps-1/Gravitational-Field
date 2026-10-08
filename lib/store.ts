@@ -1,10 +1,11 @@
 import { create } from "zustand";
 import { AIM_DEFAULT, AIM_MAX, AIM_MIN } from "./physics";
+import { resolveTier, type QualityMode, type Tier } from "./quality";
+
+export type { QualityMode, Tier };
 
 export type ModuleId = "A" | "B" | "C" | "D";
 export type ViewName = "overview" | "top" | "side" | "clocks" | "skies" | "under";
-export type QualityMode = "auto" | "high" | "low";
-export type Tier = "high" | "low";
 export type DialogId = "about" | "keys" | "settings";
 export type Speed = 0.25 | 1;
 
@@ -89,8 +90,10 @@ interface LabState {
   dialog: DialogId | null;
   /** Console open (side panel on desktop, sheet on phones). */
   panelOpen: boolean;
-  /** Effective graphics tier (resolved from settings.quality). */
+  /** Effective graphics tier (resolved from settings.quality before the 3D view is created). */
   tier: Tier;
+  /** Position within the tier's resolution range (0 = lowest, 1 = highest); set by the frame-rate monitor. */
+  resolution: number;
   settings: Settings;
   /** Latest status message for screen readers and the on-screen toast. */
   announcement: { text: string; id: number };
@@ -123,11 +126,15 @@ interface LabState {
   togglePanel: () => void;
   setPanelOpen: (open: boolean) => void;
   setTier: (tier: Tier) => void;
+  setResolution: (resolution: number) => void;
+  setQuality: (quality: QualityMode) => void;
   updateSettings: (patch: Partial<Settings>) => void;
   announce: (text: string) => void;
   setStageInset: (inset: { right: number; bottom: number }) => void;
   setGpuLost: (lost: boolean) => void;
 }
+
+const initialSettings = loadSettings();
 
 export const useLab = create<LabState>((set, get) => ({
   ready: false,
@@ -147,8 +154,9 @@ export const useLab = create<LabState>((set, get) => ({
   welcome: true,
   dialog: null,
   panelOpen: true,
-  tier: "high",
-  settings: loadSettings(),
+  tier: typeof window === "undefined" ? "high" : resolveTier(initialSettings.quality),
+  resolution: 1,
+  settings: initialSettings,
   announcement: { text: "", id: 0 },
   stageInset: { right: 0, bottom: 0 },
   gpuLost: false,
@@ -162,7 +170,11 @@ export const useLab = create<LabState>((set, get) => ({
     get().announce(on ? "Miraj engaged: the seven skies are separating." : "Miraj disengaged: returning to the gravity well.");
   },
   toggleMiraj: () => get().setMiraj(!get().miraj),
-  firePhoton: () => set((s) => ({ photonShots: s.photonShots + 1, focus: s.miraj ? "D" : "B" })),
+  firePhoton: () => {
+    // Shots fired behind the loading screen would be hidden again by the shader warm-up.
+    if (!get().ready) return;
+    set((s) => ({ photonShots: s.photonShots + 1, focus: s.miraj ? "D" : "B" }));
+  },
   clearPaths: () => set((s) => ({ pathClears: s.pathClears + 1 })),
   resetClocks: () => {
     set((s) => ({ clockResets: s.clockResets + 1, focus: "C" }));
@@ -194,6 +206,7 @@ export const useLab = create<LabState>((set, get) => ({
   },
   step: () => set((s) => (s.paused ? { steps: s.steps + 1 } : {})),
   setSpeed: (speed) => {
+    if (get().speed === speed) return;
     set({ speed });
     get().announce(speed === 1 ? "Normal speed." : "Slow motion, one quarter speed.");
   },
@@ -207,7 +220,14 @@ export const useLab = create<LabState>((set, get) => ({
   togglePanel: () => set((s) => ({ panelOpen: !s.panelOpen })),
   setPanelOpen: (panelOpen) => set({ panelOpen }),
   setTier: (tier) => {
-    if (get().tier !== tier) set({ tier });
+    if (get().tier !== tier) set({ tier, resolution: 1 });
+  },
+  setResolution: (resolution) => {
+    if (get().resolution !== resolution) set({ resolution });
+  },
+  setQuality: (quality) => {
+    get().updateSettings({ quality });
+    get().setTier(resolveTier(quality));
   },
   updateSettings: (patch) => {
     const settings = { ...get().settings, ...patch };

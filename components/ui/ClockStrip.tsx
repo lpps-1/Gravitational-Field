@@ -7,7 +7,8 @@ import { sim } from "@/lib/store";
 /**
  * Two analog clocks side by side (top of the 3D view while the Time tab is
  * open). Their second hands sweep at each clock's own rate, so "Clock B runs
- * slow" can be seen from across the room, not just read.
+ * slow" can be seen from across the room, not just read. On phones the gap
+ * between them is shown underneath, and the clocks stack at large text sizes.
  */
 export function ClockStrip({ compact = false }: { compact?: boolean }) {
   const handA = useRef<SVGLineElement>(null);
@@ -35,35 +36,58 @@ export function ClockStrip({ compact = false }: { compact?: boolean }) {
     };
     loop();
     return () => cancelAnimationFrame(raf);
-  }, []);
+  }, [compact]); // the two layouts use new elements, so start writing afresh
 
-  const size = compact ? 56 : 76;
+  const size = compact ? 48 : 76;
+  const dialA = (
+    <Dial size={size} hand={handA} color="var(--color-phosphor)" title="Clock A" subtitle="far away" compact={compact}>
+      <span ref={timeA} className="font-digital text-2xl leading-none text-paper">
+        00:00.0
+      </span>
+      <span className="text-xs text-paper-3">100% speed</span>
+    </Dial>
+  );
+  const dialB = (
+    <Dial size={size} hand={handB} color="var(--color-amber)" title="Clock B" subtitle="near the mass" compact={compact}>
+      <span ref={timeB} className="font-digital text-2xl leading-none text-paper">
+        00:00.0
+      </span>
+      <span ref={rateB} className="text-xs text-paper-3">
+        100% speed
+      </span>
+    </Dial>
+  );
+  const behind = (
+    <div className={compact ? "flex items-baseline justify-center gap-2" : "flex flex-col items-center justify-center px-1 text-center"}>
+      <span className="text-xs text-paper-3">B is behind by</span>
+      <span ref={lag} className={`font-digital leading-none text-amber ${compact ? "text-2xl" : "text-3xl"}`}>
+        0.0 s
+      </span>
+    </div>
+  );
   return (
     <div
       role="group"
       aria-label="Clock comparison"
-      className="pointer-events-auto flex items-stretch gap-3 rounded-lg border border-line bg-navy-deep/95 px-3 py-2 shadow-xl"
+      className={`pointer-events-auto flex max-w-full rounded-lg border border-line bg-navy-deep/95 px-3 shadow-xl ${
+        compact ? "flex-col gap-1 py-1.5" : "items-stretch gap-3 py-2"
+      }`}
     >
-      <Dial size={size} hand={handA} color="var(--color-phosphor)" title="Clock A" subtitle="far away">
-        <span ref={timeA} className="font-digital text-2xl leading-none text-paper">
-          00:00.0
-        </span>
-        <span className="text-xs text-paper-3">100% speed</span>
-      </Dial>
-      <div className="flex flex-col items-center justify-center px-1 text-center">
-        <span className="text-xs text-paper-3">B is behind by</span>
-        <span ref={lag} className="font-digital text-3xl leading-none text-amber">
-          0.0 s
-        </span>
-      </div>
-      <Dial size={size} hand={handB} color="var(--color-amber)" title="Clock B" subtitle="near the mass">
-        <span ref={timeB} className="font-digital text-2xl leading-none text-paper">
-          00:00.0
-        </span>
-        <span ref={rateB} className="text-xs text-paper-3">
-          100% speed
-        </span>
-      </Dial>
+      {compact ? (
+        <>
+          <div className="flex flex-wrap justify-center gap-x-3 gap-y-2">
+            {dialA}
+            {dialB}
+          </div>
+          {behind}
+        </>
+      ) : (
+        <>
+          {dialA}
+          {behind}
+          {dialB}
+        </>
+      )}
     </div>
   );
 }
@@ -74,6 +98,7 @@ function Dial({
   color,
   title,
   subtitle,
+  compact,
   children,
 }: {
   size: number;
@@ -81,6 +106,7 @@ function Dial({
   color: string;
   title: string;
   subtitle: string;
+  compact: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -102,7 +128,8 @@ function Dial({
       </svg>
       <div className="flex flex-col gap-0.5">
         <span className="text-xs font-semibold text-paper">
-          {title} <span className="font-normal text-paper-3">· {subtitle}</span>
+          {title}{" "}
+          {compact ? <span className="block font-normal text-paper-3">{subtitle}</span> : <span className="font-normal text-paper-3">· {subtitle}</span>}
         </span>
         {children}
       </div>

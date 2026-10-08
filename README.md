@@ -15,14 +15,27 @@ npm run exhibit    # builds, then serves http://localhost:3000
 
 For development: `npm run dev`.
 
-The app needs a browser with WebGL (any recent Chrome, Edge or Firefox).
+The app needs a browser with WebGL 2 (any recent Chrome, Edge or Firefox). **No graphics card is needed.** It runs on the graphics built into the processor (for example Intel UHD or Iris on a Core i5, or AMD Radeon Graphics), and even with graphics acceleration switched off.
 
-### Smooth on a Windows laptop
+### Smooth on a laptop without a graphics card
 
+The lab checks the computer when it starts and picks one of three graphics levels. You can also choose one in **Settings** (gear icon):
+
+| Level | Picked for | What changes |
+|---|---|---|
+| **Full** | A graphics card | Bloom glow, 4× anti-aliasing, up to 1.5× resolution |
+| **Light** | Built-in graphics (Intel UHD / Iris, AMD Radeon Graphics) | No post-processing pass; the glow comes from cheap sprites; up to 1× resolution |
+| **Minimal** | No graphics acceleration (the browser draws on the processor) | Lower resolution, no anti-aliasing, a steady 30 frames per second, no scanline overlay |
+
+While it runs, the lab measures the frame rate. If a computer can't keep up, it lowers the resolution, and in Automatic mode it moves down a level. Settings shows which level is in use and which graphics the browser found.
+
+On Windows:
+
+- Use the production build (`npm run exhibit`), not `npm run dev`.
 - Plug the laptop in and set **Power mode** to *Best performance*.
-- In **Settings → System → Display → Graphics**, set Chrome or Edge to *High performance*.
-- Keep the browser's hardware acceleration on, and turn Energy Saver off.
-- The lab picks a graphics level automatically. If it still stutters, open **Settings** (gear icon) and choose **Light**, or turn off **Glow effect**.
+- Keep the browser's graphics acceleration on: Chrome or Edge → Settings → System → **Use graphics acceleration when available**. To check, open `chrome://gpu` or `edge://gpu`; *WebGL2* should read *Hardware accelerated*. If it is off, the lab still runs, in Minimal mode.
+- Turn the browser's Energy Saver off.
+- If the browser offers no WebGL at all, the lab says so and explains how to switch it on.
 
 ## The four modules
 
@@ -47,10 +60,10 @@ A **guided tour** (10 steps, about three minutes) sets up each idea in turn. It 
 | `[` `]` · `0` `9` | Mass −5 / +5 · mass 0 / 100 |
 | `R` · `L` · `H` · `T` | Synchronise clocks · labels · hide controls · start the tour |
 | `?` | All keyboard shortcuts |
-| `Alt+Shift+R` | Reset all |
+| `Alt+Shift+Backspace` | Reset all |
 | 3D view focused: arrows, `+` `−`, `Home` | Rotate, zoom, back to overview |
 
-Single-key shortcuts can be turned off in Settings. `Alt+Shift+<key>` always works.
+Single-key shortcuts can be turned off in Settings. Then use `Alt+Shift` with the same key (for example `Alt+Shift+M`).
 
 ## Standards
 
@@ -62,7 +75,9 @@ Single-key shortcuts can be turned off in Settings. `Alt+Shift+<key>` always wor
 - The grid and the Seven Skies are bent on the GPU by vertex shaders. The CPU does no per-vertex work.
 - Every shader is compiled while the loading screen is up, so the first photon and the first Miraj no longer freeze the screen.
 - Photon paths and orbit trails reuse preallocated buffers, so there is no per-frame garbage.
-- Render resolution is capped at 1.5×, and bloom runs at half resolution. A light graphics tier is chosen automatically from the GPU and the measured frame rate.
+- The graphics level is chosen before the 3D view is created, from the graphics hardware the browser reports, so nothing is built twice. Only the Full level runs the bloom pass (at half resolution); Light and Minimal draw straight to the screen.
+- Resolution adapts to the measured frame rate. Minimal holds a steady 30 frames per second, so the processor stays free for the interface.
+- Measured with software rendering (no graphics acceleration, 4-core processor, 1366×768): about 2.5 frames per second before, 25–30 after.
 - The scanline overlay is static and sits under the interface. There is no backdrop blur over the 3D view.
 
 ## Project layout
@@ -71,7 +86,8 @@ Single-key shortcuts can be turned off in Settings. `Alt+Shift+<key>` always wor
 app/                     Next.js app router (layout, page, global CSS and design tokens)
 components/Lab.tsx       Screen layout
 components/scene/        3D scene (R3F)
-  Scene.tsx              Canvas, quality tiers, bloom, shader warm-up, camera views
+  Scene.tsx              Canvas, bloom, shader warm-up, frame cap, adaptive resolution, camera views
+  Halo.tsx               Sprite glow for the levels without bloom
   SimDriver.tsx          Shared time step, pause/speed, Miraj timeline, clocks
   SpacetimeGrid.tsx      Module 1: grid (vertex shader)
   OrbitingBodies.tsx     Module 1: Kepler orbits, trails, outlines, straight-line release
@@ -84,6 +100,7 @@ lib/physics.ts           All the physics in one place
 lib/shaders.ts           GPU versions of the grid and fold
 lib/content.ts           All explanatory text, verses and labels
 lib/tour.ts              The guided tour
+lib/quality.ts           Graphics levels and the hardware check
 lib/store.ts             UI state and per-frame simulation values
 ```
 

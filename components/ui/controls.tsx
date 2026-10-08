@@ -63,6 +63,8 @@ export function Switch({
       type="button"
       role="switch"
       aria-checked={checked}
+      // Named by the label alone: the description is separate and the On/Off text repeats aria-checked.
+      aria-labelledby={`${id}-label`}
       aria-describedby={description ? `${id}-desc` : undefined}
       aria-keyshortcuts={keyshortcuts}
       onClick={() => onChange(!checked)}
@@ -71,7 +73,9 @@ export function Switch({
       }`}
     >
       <span className="min-w-0">
-        <span className="block text-sm font-semibold text-paper">{label}</span>
+        <span id={`${id}-label`} className="block text-sm font-semibold text-paper">
+          {label}
+        </span>
         {description && (
           <span id={`${id}-desc`} className="block text-xs text-paper-3">
             {description}
@@ -80,7 +84,9 @@ export function Switch({
       </span>
       <span className="flex shrink-0 items-center gap-2">
         {shortcut && <Kbd>{shortcut}</Kbd>}
-        <span className="text-xs font-semibold text-paper-2">{checked ? "On" : "Off"}</span>
+        <span aria-hidden className="text-xs font-semibold text-paper-2">
+          {checked ? "On" : "Off"}
+        </span>
         <span
           aria-hidden
           className={`relative h-6 w-11 rounded-full border transition-colors ${checked ? "border-violet-text bg-violet" : "border-line-strong bg-navy-deep"}`}

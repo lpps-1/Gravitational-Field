@@ -8,11 +8,17 @@ import { prefersReducedMotion } from "@/lib/hooks";
 import { SKY_COUNT, SKY_RADIUS, THROAT_RADIUS, TRANSIT_SECONDS, TUNNEL_BOTTOM, TUNNEL_TOP, skyHeight } from "@/lib/physics";
 import { createSkiesMaterial } from "@/lib/shaders";
 import { sim, useLab } from "@/lib/store";
+import { Halo } from "./Halo";
 
-const RING_STEP = 0.45;
-const RING_SEGMENTS = 128;
-const SPOKES = 36;
-const SPOKE_STEP = 0.12;
+/**
+ * Line density of the skies. All seven together are the heaviest thing in the
+ * scene (61k line vertices at full detail), so software rendering gets a
+ * quarter of the lines.
+ */
+const DETAIL = {
+  full: { ringStep: 0.45, ringSegments: 128, spokes: 36, spokeStep: 0.12 },
+  lite: { ringStep: 0.9, ringSegments: 72, spokes: 24, spokeStep: 0.3 },
+};
 
 /** Bottom sky is cool blue, rising through violet to a golden seventh sky. */
 export const SKY_HEX = ["#6fb7ff", "#7fa8ff", "#9c98ff", "#c08cf5", "#e693d0", "#f5b08f", "#ffd47a"];
@@ -41,7 +47,8 @@ const LAUNCH_DELAY = 0.5;
 export function SevenSkies() {
   const lines = useRef<THREE.LineSegments>(null);
   const tunnel = useRef<THREE.Mesh>(null);
-  const geometry = useMemo(buildSkies, []);
+  // Built once for the tier the canvas started with.
+  const geometry = useMemo(() => buildSkies(DETAIL[useLab.getState().tier === "cpu" ? "lite" : "full"]), []);
   const material = useMemo(createSkiesMaterial, []);
 
   useEffect(
@@ -126,9 +133,13 @@ function Traveler() {
     st.openFor = open ? st.openFor + dt : 0;
     if (!open) st.launchedThisOpening = false;
     if (sim.fold < 0.9) {
+      // The tunnel is closing: end any transit, trace and flare, and clear the sky highlights.
       st.active = false;
       st.trace = -1;
+      st.ringT = -1;
       st.pending = st.pending && useLab.getState().miraj;
+      sim.transitActive = false;
+      sim.skyPassed = -1;
     }
 
     // Launch automatically shortly after the tunnel opens, or on request.
@@ -218,6 +229,7 @@ function Traveler() {
             toneMapped={false}
           />
         </mesh>
+        <Halo color={[0.85, 0.78, 1.0]} size={1.5} opacity={0.85} />
       </group>
       <mesh ref={streak} visible={false}>
         <cylinderGeometry args={[0.07, 0.07, 1, 10, 1, true]} />
@@ -250,7 +262,7 @@ function Traveler() {
  * Rings and spokes for all seven skies in one static LineSegments geometry.
  * `position` holds (rest radius, angle, sky index); the shader does the rest.
  */
-function buildSkies() {
+function buildSkies({ ringStep, ringSegments, spokes, spokeStep }: (typeof DETAIL)["full"]) {
   const pos: number[] = [];
   const tint: number[] = [];
   const index: number[] = [];
@@ -268,17 +280,17 @@ function buildSkies() {
 
   for (let sky = 0; sky < SKY_COUNT; sky++) {
     // Concentric rings.
-    for (let radius = 0.3; radius <= SKY_RADIUS + 1e-6; radius += RING_STEP) {
+    for (let radius = 0.3; radius <= SKY_RADIUS + 1e-6; radius += ringStep) {
       const first = n;
-      for (let s = 0; s < RING_SEGMENTS; s++) {
-        add(radius, (s / RING_SEGMENTS) * Math.PI * 2, sky);
-        index.push(first + s, first + ((s + 1) % RING_SEGMENTS));
+      for (let s = 0; s < ringSegments; s++) {
+        add(radius, (s / ringSegments) * Math.PI * 2, sky);
+        index.push(first + s, first + ((s + 1) % ringSegments));
       }
     }
     // Radial spokes, sampled finely so they bend smoothly into the tunnel.
-    const samples = Math.round(SKY_RADIUS / SPOKE_STEP);
-    for (let s = 0; s < SPOKES; s++) {
-      const angle = (s / SPOKES) * Math.PI * 2 + (sky % 2) * (Math.PI / SPOKES);
+    const samples = Math.round(SKY_RADIUS / spokeStep);
+    for (let s = 0; s < spokes; s++) {
+      const angle = (s / spokes) * Math.PI * 2 + (sky % 2) * (Math.PI / spokes);
       const first = n;
       for (let k = 0; k <= samples; k++) {
         add(0.3 + (k / samples) * (SKY_RADIUS - 0.3), angle, sky);

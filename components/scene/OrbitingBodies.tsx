@@ -7,6 +7,7 @@ import * as THREE from "three";
 import { getAnchor } from "@/lib/anchors";
 import { ORBIT_RELEASE_MASS, WELL_RADIUS, orbitalGM, solveKepler, wellHeight } from "@/lib/physics";
 import { sim, useLab } from "@/lib/store";
+import { Halo, useHalosEnabled } from "./Halo";
 
 interface Orbit {
   /** Semi-major axis. */
@@ -37,6 +38,14 @@ const TRAIL_POINTS = 60;
 const OUTLINE_POINTS = 128;
 /** Bodies released at zero mass are hidden once they are this far out. */
 const ESCAPE_RADIUS = WELL_RADIUS + 6;
+/** Halo tint: the body's hue at full brightness, no brighter (halos only show without bloom). */
+const haloTint = (c: [number, number, number]): [number, number, number] => {
+  const k = Math.max(...c);
+  return [c[0] / k, c[1] / k, c[2] / k];
+};
+/** Without bloom, colours above 1 clip to plain white: use a pastel of the hue so bodies stay told apart. */
+const pastelTint = (c: [number, number, number]): [number, number, number] =>
+  haloTint(c).map((v) => 0.45 + 0.55 * v) as [number, number, number];
 
 /**
  * MODULE A — "yasbahun": bodies swimming in their orbits.
@@ -68,6 +77,7 @@ type Mode = "orbit" | "flying" | "gone";
 function Body({ orbit }: { orbit: Orbit }) {
   const size = useThree((s) => s.size);
   const resets = useLab((s) => s.resets);
+  const halos = useHalosEnabled();
   const mesh = useRef<THREE.Mesh>(null);
   const outline = useRef<THREE.LineLoop>(null);
   const trailMesh = useRef<THREE.Mesh>(null);
@@ -186,7 +196,8 @@ function Body({ orbit }: { orbit: Orbit }) {
 
     state.appear = Math.min(1, state.appear + dt * 2);
     const r = state.flat.length();
-    const fadeOut = state.mode === "orbit" ? 1 : Math.max(0, 1 - (r - WELL_RADIUS) / (ESCAPE_RADIUS - WELL_RADIUS));
+    // Released bodies keep full size inside the well and shrink away beyond it.
+    const fadeOut = state.mode === "orbit" ? 1 : Math.min(1, Math.max(0, 1 - (r - WELL_RADIUS) / (ESCAPE_RADIUS - WELL_RADIUS)));
     const scale = Math.max(0.001, state.appear * fadeOut);
     m.scale.setScalar(scale);
     m.visible = state.mode !== "gone";
@@ -241,7 +252,8 @@ function Body({ orbit }: { orbit: Orbit }) {
       <mesh ref={trailMesh} geometry={trail.geometry} material={trail.material} frustumCulled={false} />
       <mesh ref={mesh} position={state.start}>
         <sphereGeometry args={[orbit.size, 24, 16]} />
-        <meshBasicMaterial color={orbit.color} toneMapped={false} />
+        <meshBasicMaterial color={halos ? pastelTint(orbit.color) : orbit.color} toneMapped={false} />
+        <Halo color={haloTint(orbit.color)} size={orbit.size * 6} opacity={0.9} />
       </mesh>
     </group>
   );

@@ -66,7 +66,11 @@ export function SimDriver() {
     if (miraj) sim.mirajTime = Math.min(MIRAJ_TOTAL_SECONDS, sim.mirajTime + dt);
     else sim.mirajTime = Math.max(0, sim.mirajTime - dt * REVERSE_RATE);
     sim.expand = smooth(Math.min(1, sim.mirajTime / MIRAJ_EXPAND_SECONDS));
-    sim.fold = Math.min(1, Math.max(0, (sim.mirajTime - MIRAJ_EXPAND_SECONDS - MIRAJ_HOLD_SECONDS) / MIRAJ_FOLD_SECONDS));
+    // Snapped at the end: (8.7 - 3 - 1.2) / 4.5 rounds to just under 1, and `fold >= 1` means "open".
+    sim.fold =
+      sim.mirajTime >= MIRAJ_TOTAL_SECONDS
+        ? 1
+        : Math.min(1, Math.max(0, (sim.mirajTime - MIRAJ_EXPAND_SECONDS - MIRAJ_HOLD_SECONDS) / MIRAJ_FOLD_SECONDS));
 
     // Time dilation. Clock A is far away: one second per second.
     sim.rateB = dilationFactor(sim.m);

@@ -5,8 +5,9 @@ import { useRef } from "react";
 import * as THREE from "three";
 import { getAnchor } from "@/lib/anchors";
 import { prefersReducedMotion } from "@/lib/hooks";
-import { centralBodyRadius, wellHeight } from "@/lib/physics";
+import { ORBIT_RELEASE_MASS, centralBodyRadius, wellHeight } from "@/lib/physics";
 import { sim } from "@/lib/store";
+import { Halo } from "./Halo";
 
 /** The glowing body at the bottom of the gravity well. */
 export function CentralMass() {
@@ -17,7 +18,7 @@ export function CentralMass() {
   useFrame(() => {
     const g = group.current;
     if (!g) return;
-    const visible = sim.m > 0.01 && sim.expand < 0.02;
+    const visible = sim.m > ORBIT_RELEASE_MASS && sim.expand < 0.02;
     g.visible = visible;
 
     const label = getAnchor("mass");
@@ -53,6 +54,7 @@ export function CentralMass() {
           toneMapped={false}
         />
       </mesh>
+      <Halo color={[1.0, 0.55, 0.18]} size={4.5} opacity={0.8} />
     </group>
   );
 }

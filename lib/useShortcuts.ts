@@ -7,11 +7,14 @@ import { useLab } from "./store";
 /**
  * Keyboard shortcuts for presenters.
  *
- * WCAG 2.1.4: single-key shortcuts only fire when nothing interactive has
- * focus (the page itself or the 3D view), and can be switched off in
- * Settings. Alt+Shift+<key> always works, as in PhET simulations.
+ * WCAG 2.1.4: single-key shortcuts never fire while a control has focus, and
+ * can be switched off in Settings. Alt+Shift+<the same key> always works, as
+ * in PhET simulations; Reset all is only Alt+Shift+Backspace.
  * Page Down / Page Up step through the tour, so presentation clickers work.
  */
+const CONTROLS =
+  'input,textarea,select,button,a[href],summary,[role=tab],[role=switch],[role=radio],[role=slider],[contenteditable="true"]';
+
 export function useShortcuts() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -34,8 +37,10 @@ export function useShortcuts() {
 
       const chord = e.altKey && e.shiftKey;
       if (e.altKey && !chord) return;
-      const free = !target || target === document.body || target === document.documentElement || !!target.closest("[data-stage]");
+      const free = !(target instanceof Element) || !target.closest(CONTROLS);
       if (!chord && (!lab.settings.shortcuts || !free)) return;
+      // The explanation panel keeps Space for scrolling.
+      if (!chord && e.key === " " && target instanceof Element && target.closest("[role=tabpanel]")) return;
 
       // With Alt+Shift, e.key can be a different character, so use the physical key.
       const key = chord ? codeToKey(e.code) : e.key.toLowerCase();
@@ -59,14 +64,15 @@ export function useShortcuts() {
           if (once) lab.setSpeed(lab.speed === 1 ? 0.25 : 1);
           break;
         case "r":
-          if (once) {
-            if (chord) lab.resetAll();
-            else lab.resetClocks();
-          }
+          if (once) lab.resetClocks();
           break;
-        case "c":
+        case "c": // older chord for Synchronise, kept as an alias
           if (once && chord) lab.resetClocks();
           else handled = false;
+          break;
+        case "backspace":
+          if (!chord) handled = false;
+          else if (once) lab.resetAll();
           break;
         case "[":
           if (!lab.miraj) lab.setMass(lab.mass - 5);
@@ -106,6 +112,6 @@ export function useShortcuts() {
 function codeToKey(code: string): string {
   if (code.startsWith("Key")) return code.slice(3).toLowerCase();
   if (code.startsWith("Digit")) return code.slice(5);
-  const map: Record<string, string> = { Space: " ", Period: ".", BracketLeft: "[", BracketRight: "]", Slash: "?" };
+  const map: Record<string, string> = { Space: " ", Period: ".", BracketLeft: "[", BracketRight: "]", Slash: "?", Backspace: "backspace" };
   return map[code] ?? "";
 }

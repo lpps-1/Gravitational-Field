@@ -22,7 +22,10 @@ import { Header, ResetAllButton, TimeControls, Toolbar, ViewButtons } from "./ui
  * captions, time controls, reset) stay inside the area the console leaves
  * free; the console is a side panel on wide screens and a bottom sheet on
  * phones. Layers, bottom to top: 3D view · scanlines · scene labels ·
- * overlays · console · dialogs.
+ * overlays · console · dialogs. Overlays flow (and wrap) rather than sit at
+ * fixed offsets, so nothing collides at large text sizes: the captions sit
+ * under the title row and are clipped above the time controls on short views;
+ * on phones Reset all moves into the menu.
  */
 export default function Lab() {
   useShortcuts();
@@ -41,26 +44,36 @@ export default function Lab() {
         className="pointer-events-none absolute top-0 left-0 z-30 transition-[right,bottom] duration-300"
         style={{ right: inset.right, bottom: inset.bottom }}
       >
-        <div className="absolute inset-x-3 top-3 flex items-start justify-between gap-3">
-          <Header compact={!wide} />
-          <Toolbar compact={!wide} />
+        {/* Bottom bound: room for the bottom row (time controls, plus the view buttons above them when wide). */}
+        <div className={`absolute inset-x-3 top-3 flex flex-col items-center gap-2 ${wide ? "bottom-[8.5rem]" : "bottom-[5rem]"}`}>
+          <div className="flex w-full shrink-0 items-start justify-between gap-3">
+            <Header compact={!wide} />
+            <Toolbar compact={!wide} />
+          </div>
+          <div className="flex min-h-0 w-full items-start justify-center overflow-y-clip pb-4">
+            <TopCentre compact={!wide} />
+          </div>
         </div>
 
-        <div className={`absolute inset-x-3 flex justify-center ${wide ? "top-[7.25rem]" : "top-[5.5rem]"}`}>
-          <TopCentre compact={!wide} />
-        </div>
-
-        <div className="absolute inset-x-3 bottom-[4.5rem] flex flex-col items-center gap-2">
+        <div className="@container absolute inset-x-3 bottom-3 flex flex-col items-center gap-2">
           <Announcer />
           {!panelOpen && <TourCard placement="stage" />}
-        </div>
-
-        <div className="absolute inset-x-3 bottom-3 flex items-end justify-between gap-3">
-          <div className="min-w-0 flex-1">{wide && <ViewButtons />}</div>
-          <TimeControls />
-          <div className="flex flex-1 justify-end">
-            <ResetAllButton />
-          </div>
+          {wide ? (
+            // Views · time · reset in one row when there is room, otherwise the views on a row of their own.
+            <div className="grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-end gap-x-3 gap-y-2">
+              <div className="col-span-3 @min-[46rem]:col-span-1">
+                <ViewButtons />
+              </div>
+              <div className="col-start-2">
+                <TimeControls />
+              </div>
+              <div className="flex justify-end">
+                <ResetAllButton />
+              </div>
+            </div>
+          ) : (
+            <TimeControls />
+          )}
         </div>
       </div>
 
@@ -77,8 +90,11 @@ export default function Lab() {
 /** The focusable 3D view: arrow keys orbit, +/− zoom and Home resets the camera while it has focus. */
 function Stage() {
   const setView = useLab((s) => s.setView);
+  const inset = useLab((s) => s.stageInset);
 
   const onKeyDown = (e: React.KeyboardEvent) => {
+    // Leave browser zoom (Ctrl/Cmd + and −) and history (Alt+←) alone.
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
     const step = Math.PI / 12;
     switch (e.key) {
       case "ArrowLeft":
@@ -118,6 +134,8 @@ function Stage() {
       aria-describedby="scene-desc"
       onKeyDown={onKeyDown}
       className="absolute inset-0"
+      // The focus ring (globals.css) traces the part of the view the console leaves free.
+      style={{ ["--stage-right" as string]: `${inset.right}px`, ["--stage-bottom" as string]: `${inset.bottom}px` }}
     >
       <Scene />
       <SceneDescription />

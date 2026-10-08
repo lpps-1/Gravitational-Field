@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useId, useRef } from "react";
+import { TIERS, graphicsName, probeGraphics } from "@/lib/quality";
 import { useLab, type QualityMode, type Settings } from "@/lib/store";
 import { Button } from "./controls";
 import { CloseIcon } from "./icons";
@@ -23,6 +24,7 @@ function Modal({
   wide?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
   useEffect(() => {
     const d = ref.current;
     if (!d) return;
@@ -33,12 +35,12 @@ function Modal({
     <dialog
       ref={ref}
       onClose={onClose}
-      aria-labelledby={`${title}-title`}
+      aria-labelledby={titleId}
       className={`m-auto max-h-[85dvh] ${wide ? "w-[min(44rem,calc(100vw-2rem))]" : "w-[min(32rem,calc(100vw-2rem))]"} overflow-hidden rounded-xl border border-line-strong bg-navy-deep p-0 text-paper shadow-2xl`}
     >
       <div className="flex max-h-[85dvh] flex-col">
         <header className="flex items-center justify-between border-b border-line ps-5 pe-2 py-2">
-          <h2 id={`${title}-title`} className="text-lg font-semibold">
+          <h2 id={titleId} className="text-lg font-semibold">
             {title}
           </h2>
           <Button variant="ghost" onClick={onClose} aria-label="Close">
@@ -114,7 +116,7 @@ const KEYS: [string, string][] = [
   ["T", "Start the guided tour"],
   ["Page Down / Page Up", "Next or previous tour step (works with presentation clickers)"],
   ["?", "Open this list"],
-  ["Alt+Shift+R", "Reset all"],
+  ["Alt+Shift+Backspace", "Reset all"],
 ];
 
 const CAMERA_KEYS: [string, string][] = [
@@ -139,8 +141,8 @@ function Keys() {
         <span>
           <span className="block text-sm font-semibold">Single-key shortcuts</span>
           <span className="block text-xs text-paper-3">
-            When off, use Alt+Shift with the same key (for example Alt+Shift+M). Shortcuts never fire while you are typing or using a
-            control.
+            When off, use Alt+Shift with the same key (for example Alt+Shift+M). Reset all is always Alt+Shift+Backspace. Shortcuts
+            never fire while you are typing or using a control.
           </span>
         </span>
       </label>
@@ -172,7 +174,7 @@ function SettingsForm() {
   const settings = useLab((s) => s.settings);
   const tier = useLab((s) => s.tier);
   const update = useLab((s) => s.updateSettings);
-  const setTier = useLab((s) => s.setTier);
+  const setQuality = useLab((s) => s.setQuality);
 
   const toggle = (key: keyof Settings, label: string, hint: string) => (
     <label className="flex items-start gap-3 py-2">
@@ -189,34 +191,44 @@ function SettingsForm() {
     </label>
   );
 
-  const setQuality = (q: QualityMode) => {
-    update({ quality: q });
-    if (q !== "auto") setTier(q);
-  };
+  const probe = probeGraphics();
+  const options: [QualityMode, string][] = [
+    ["auto", "Automatic"],
+    ["high", "Full · graphics card"],
+    ["low", "Light · built-in graphics"],
+    ["cpu", "Minimal · no graphics card"],
+  ];
 
   return (
     <div className="divide-y divide-line">
       <fieldset className="pb-3">
         <legend className="pb-1 text-sm font-semibold">Graphics quality</legend>
         <div className="flex flex-wrap gap-2">
-          {(["auto", "high", "low"] as const).map((q) => (
+          {options.map(([q, label]) => (
             <label
               key={q}
               className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-md border border-line-strong px-3 text-sm"
             >
               <input type="radio" name="quality" checked={settings.quality === q} onChange={() => setQuality(q)} className="accent-amber" />
-              {q === "auto" ? "Automatic" : q === "high" ? "High" : "Light (smoother on slower laptops)"}
+              {label}
             </label>
           ))}
         </div>
-        <p className="mt-1 text-xs text-paper-3">Currently using: {tier === "high" ? "High" : "Light"}.</p>
+        <p className="mt-1 text-xs text-paper-3">
+          Now using: {TIERS[tier].label}. This computer: {graphicsName(probe)}. Minimal suits laptops without a graphics card or
+          with graphics acceleration switched off: it draws at a lower resolution and a steady 30 frames per second.
+        </p>
       </fieldset>
       <div className="py-1">
         {toggle("glow", "Glow effect", "Soft glow around bright objects. Turning it off helps very slow computers.")}
-        {toggle("crt", "Retro scanlines", "The monitor-style lines over the 3D view.")}
+        {toggle("crt", "Retro scanlines", "The monitor-style lines over the 3D view. Not drawn in Minimal graphics, where they would slow the view.")}
         {toggle("labels", "Labels in the 3D view", "Names pinned to the objects in the scene.")}
         {toggle("reduceMotion", "Reduce motion", "No camera flights or decorative movement. Also follows your system setting.")}
-        {toggle("shortcuts", "Single-key shortcuts", "Space, M, P… When off, use Alt+Shift with the key.")}
+        {toggle(
+          "shortcuts",
+          "Single-key shortcuts",
+          "Space, M, P… When off, use Alt+Shift with the same key. Reset all is always Alt+Shift+Backspace.",
+        )}
       </div>
       <fieldset className="pt-3">
         <legend className="pb-1 text-sm font-semibold">Text size</legend>

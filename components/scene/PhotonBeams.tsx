@@ -8,6 +8,7 @@ import { formatDegrees } from "@/lib/format";
 import { createFatLine, disposeFatLine, lineColorArray, writeLinePoints, type FatLine } from "@/lib/lines";
 import { GRID_HALF, PHOTON_LIFT, PHOTON_MAX_POINTS, SUN_DEFLECTION_DEG, tracePhoton, type PhotonPath } from "@/lib/physics";
 import { sim, useLab } from "@/lib/store";
+import { createHaloSprite, halosEnabled } from "./Halo";
 
 /** Photon speed along its path, in grid units per second of simulation time. */
 const SPEED = 16;
@@ -22,6 +23,7 @@ const POOL = 3;
 const STALE_MASS = 2;
 
 const BEAM = new THREE.Color(1.0, 0.86, 0.55);
+const STAR_HALO = new THREE.Color(1.0, 0.88, 0.62);
 
 type SlotState = "idle" | "flying" | "shown" | "fading";
 
@@ -35,11 +37,15 @@ interface Slot {
   star: THREE.Mesh;
   ghost: THREE.Mesh;
   observer: THREE.Mesh;
+  headHalo: THREE.Sprite;
+  starHalo: THREE.Sprite;
   state: SlotState;
   data: PhotonPath | null;
   massSlider: number;
   age: number;
   cursor: number;
+  /** Arc length the light has reached (Infinity once it has arrived). */
+  reach: number;
   level: number;
   fade: number;
   latest: boolean;
@@ -76,18 +82,16 @@ export function PhotonBeams() {
   // Fire.
   useEffect(() => {
     if (shots === 0) return;
-    const { mass, aim, miraj } = useLab.getState();
-    if (miraj) return; // In Miraj mode the light travels through the tunnel instead.
-    const data = tracePhoton(mass / 100, aim);
-    const slot = pool.slots[pool.next];
-    pool.next = (pool.next + 1) % POOL;
-    pool.slots.forEach((s) => (s.latest = false));
-    launch(slot, data, mass);
+    if (useLab.getState().miraj) return; // In Miraj mode the light travels through the tunnel instead.
+    // While the grid is still coming back from the Miraj, the shot waits for it.
+    if (sim.expand >= 0.02) pool.queued = true;
+    else fire(pool);
   }, [shots, pool]);
 
   // Clear paths (also part of Reset all).
   useEffect(() => {
     if (clears === 0) return;
+    pool.queued = false;
     pool.slots.forEach((s) => {
       if (s.state !== "idle") s.state = "fading";
     });
@@ -99,14 +103,27 @@ export function PhotonBeams() {
     sim.photonFlying = false;
   }, [resets, pool]);
 
-  useFrame((_, raw) => {
+  useFrame(({ camera }, raw) => {
+    const { mass, miraj } = useLab.getState();
+    // The Miraj takes over the view: light on the grid is dropped, without a result.
+    const away = miraj || sim.expand >= 0.02;
     pool.group.visible = sim.expand < 0.02;
-    const mass = useLab.getState().mass;
+    if (miraj) pool.queued = false;
+    else if (pool.queued && !away) {
+      pool.queued = false;
+      fire(pool);
+    }
+    const halos = halosEnabled();
     let flying = false;
     let latest: Slot | null = null;
 
     for (const slot of pool.slots) {
+      slot.headHalo.visible = slot.starHalo.visible = halos;
       if (slot.state === "idle") continue;
+      if (away) {
+        hide(slot);
+        continue;
+      }
       if (slot.latest) latest = slot;
 
       // A path traced for a different mass no longer matches the fabric.
@@ -121,16 +138,18 @@ export function PhotonBeams() {
         const target = slot.latest ? LATEST : OLDER;
         if (slot.level !== target) paint(slot, Infinity, (slot.level = target));
         showDiagram(slot, slot.latest);
+        slot.ghost.quaternion.copy(camera.quaternion);
       } else if (slot.state === "fading") {
         slot.fade = Math.max(0, slot.fade - Math.min(raw, 0.1) * 3);
-        paint(slot, Infinity, slot.level * slot.fade);
+        // Only the part the light has flown, without its bright head.
+        paint(slot, slot.reach, slot.level * slot.fade, false);
         showDiagram(slot, false);
         slot.guide.line.visible = false;
         slot.head.visible = false;
         if (slot.fade <= 0) hide(slot);
       }
     }
-    sim.photonFlying = flying;
+    sim.photonFlying = flying || pool.queued;
     updateLabels(latest);
   });
 
@@ -139,12 +158,24 @@ export function PhotonBeams() {
 
 /* ------------------------------------------------------------------------ */
 
+type Pool = ReturnType<typeof createPool>;
+
+function fire(pool: Pool) {
+  const { mass, aim } = useLab.getState();
+  const data = tracePhoton(mass / 100, aim);
+  const slot = pool.slots[pool.next];
+  pool.next = (pool.next + 1) % POOL;
+  pool.slots.forEach((s) => (s.latest = false));
+  launch(slot, data, mass);
+}
+
 function launch(slot: Slot, data: PhotonPath, massSlider: number) {
   slot.data = data;
   slot.massSlider = massSlider;
   slot.state = "flying";
   slot.age = 0;
   slot.cursor = 0;
+  slot.reach = 0;
   slot.fade = 1;
   slot.level = LATEST;
   slot.latest = true;
@@ -172,6 +203,7 @@ function fly(slot: Slot, dt: number) {
   const data = slot.data!;
   slot.age += dt;
   const s = Math.min(data.length, slot.age * SPEED);
+  slot.reach = s;
   paint(slot, s, LATEST);
 
   // Move the glowing head along the path.
@@ -195,6 +227,7 @@ function fly(slot: Slot, dt: number) {
 function arrive(slot: Slot) {
   const data = slot.data!;
   slot.state = "shown";
+  slot.reach = Infinity;
   slot.head.visible = false;
   paint(slot, Infinity, LATEST);
 
@@ -206,16 +239,18 @@ function arrive(slot: Slot) {
     slot.flash.scale.setScalar(1.2);
   } else {
     slot.observer.position.copy(end);
-    // Where the observer sees the star: straight back along the arriving light.
+    // Where the observer sees the star: straight back along the arriving light, to the far edge of the grid.
     const [dx, dz] = data.exitDir;
-    if (data.deflection > 0.5 && dx > 0.2) {
-      const t = (end.x + GRID_HALF) / dx;
+    const t = sightDistance(end.x, end.z, dx, dz);
+    if (data.deflection > 0.5 && t > 1) {
       slot.apparent = new THREE.Vector3(end.x - dx * t, PHOTON_LIFT, end.z - dz * t);
       writeLinePoints(slot.sight, [end.x, PHOTON_LIFT, end.z, slot.apparent.x, slot.apparent.y, slot.apparent.z], 2);
       slot.ghost.position.copy(slot.apparent);
     }
   }
 
+  // An older, slower shot landing after a newer one must not replace its result.
+  if (!slot.latest) return;
   sim.lastShot = { deflection: data.deflection, captured: data.captured, impact: data.impact, mass: slot.massSlider };
   const lab = useLab.getState();
   if (data.captured) lab.announce("The light fell into the central mass.");
@@ -226,15 +261,38 @@ function arrive(slot: Slot) {
     );
 }
 
-/** Colour the path: bright just behind the head (at arc length `s`), `level` elsewhere. */
-function paint(slot: Slot, s: number, level: number) {
+/**
+ * How far back from the observer (x, z) the line of sight runs against the
+ * arriving direction (dx, dz) before it leaves the grid (0 if it never crosses it).
+ */
+function sightDistance(x: number, z: number, dx: number, dz: number): number {
+  let near = 0;
+  let far = Infinity;
+  for (const [p, d] of [
+    [x, -dx],
+    [z, -dz],
+  ]) {
+    if (Math.abs(d) < 1e-9) {
+      if (Math.abs(p) > GRID_HALF) return 0;
+      continue;
+    }
+    const t1 = (-GRID_HALF - p) / d;
+    const t2 = (GRID_HALF - p) / d;
+    near = Math.max(near, Math.min(t1, t2));
+    far = Math.min(far, Math.max(t1, t2));
+  }
+  return far > near ? far : 0;
+}
+
+/** Colour the path up to arc length `s`: `level`, plus a bright streak just behind `s` when `streak` is set. */
+function paint(slot: Slot, s: number, level: number, streak = true) {
   const data = slot.data;
   if (!data) return;
   const { array, commit } = lineColorArray(slot.path);
   const intensity = (k: number) => {
     const d = s - data.arc[k];
     if (d < 0) return 0;
-    return level + (d < STREAK ? Math.pow(1 - d / STREAK, 1.6) * 3 : 0);
+    return level + (streak && d < STREAK ? Math.pow(1 - d / STREAK, 1.6) * 3 : 0);
   };
   let prev = intensity(0);
   for (let k = 0; k < data.count - 1; k++) {
@@ -294,6 +352,7 @@ function createPool() {
   const group = new THREE.Group();
   const sphere = new THREE.SphereGeometry(1, 16, 12);
   const octa = new THREE.OctahedronGeometry(1, 0);
+  const ring = new THREE.RingGeometry(0.78, 1, 48);
   const headCore = new THREE.MeshBasicMaterial({ color: new THREE.Color(6, 5.2, 3.6), toneMapped: false });
   const headGlow = new THREE.MeshBasicMaterial({
     color: new THREE.Color(1.6, 1.2, 0.6),
@@ -304,15 +363,8 @@ function createPool() {
     toneMapped: false,
   });
   const starMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(3.2, 2.8, 2.0), toneMapped: false });
-  const ghostMat = new THREE.MeshBasicMaterial({
-    color: new THREE.Color(1.4, 1.2, 0.9),
-    wireframe: true,
-    transparent: true,
-    opacity: 0.8,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false,
-    toneMapped: false,
-  });
+  // The apparent star is an outline below the bloom threshold, so the true star stays the brightest dot.
+  const ghostMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.57, 0.48, 0.3), toneMapped: false });
   const observerMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.8, 2.4, 2.4), wireframe: true, toneMapped: false });
   const flashMat = new THREE.MeshBasicMaterial({
     color: new THREE.Color(3, 1.8, 0.8),
@@ -341,6 +393,11 @@ function createPool() {
     head.add(mesh(sphere, headCore, 0.16), mesh(sphere, headGlow, 0.45));
     head.children.forEach((c) => (c.visible = true));
     head.visible = false;
+    const headHalo = createHaloSprite(BEAM, 1.2, 0.85);
+    head.add(headHalo);
+    const star = mesh(sphere, starMat, 0.3);
+    const starHalo = createHaloSprite(STAR_HALO, 0.9 / 0.3, 0.8);
+    star.add(starHalo);
 
     const slot: Slot = {
       group: new THREE.Group(),
@@ -349,14 +406,17 @@ function createPool() {
       sight,
       head,
       flash: mesh(sphere, flashMat, 1),
-      star: mesh(sphere, starMat, 0.3),
-      ghost: mesh(sphere, ghostMat, 0.32),
+      star,
+      ghost: mesh(ring, ghostMat, 0.45),
       observer: mesh(octa, observerMat, 0.32),
+      headHalo,
+      starHalo,
       state: "idle",
       data: null,
       massSlider: 0,
       age: 0,
       cursor: 0,
+      reach: 0,
       level: LATEST,
       fade: 1,
       latest: false,
@@ -371,9 +431,14 @@ function createPool() {
     group,
     slots,
     next: 0,
+    /** A shot fired while the grid was still returning from the Miraj. */
+    queued: false,
     dispose: () => {
-      slots.forEach((s) => [s.path, s.guide, s.sight].forEach(disposeFatLine));
-      [sphere, octa].forEach((g) => g.dispose());
+      slots.forEach((s) => {
+        [s.path, s.guide, s.sight].forEach(disposeFatLine);
+        [s.headHalo, s.starHalo].forEach((h) => h.material.dispose());
+      });
+      [sphere, octa, ring].forEach((g) => g.dispose());
       [headCore, headGlow, starMat, ghostMat, observerMat, flashMat].forEach((m) => m.dispose());
     },
   };

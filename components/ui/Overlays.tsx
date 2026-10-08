@@ -60,6 +60,27 @@ export function TourDriver() {
     if (!tour.active) return;
     return enterTourStep(tour.step);
   }, [tour.active, tour.step]);
+
+  // Keep keyboard focus when the card's focused button goes away (checked
+  // before React re-renders, moved once the change is on screen): Back is
+  // disabled on the first step, so go to Next; when the tour ends, go to the
+  // toolbar's "Guided tour" button (or the 3D view).
+  useEffect(
+    () =>
+      useLab.subscribe((s, prev) => {
+        const active = document.activeElement;
+        const card = active?.closest("[data-tour-card]");
+        if (!card) return;
+        let target: () => HTMLElement | null;
+        if (prev.tour.active && !s.tour.active)
+          target = () => document.getElementById("start-tour") ?? document.querySelector<HTMLElement>("[data-stage]");
+        else if (s.tour.step === 0 && prev.tour.step !== 0 && active?.hasAttribute("data-tour-back"))
+          target = () => card.querySelector<HTMLElement>("[data-tour-next]");
+        else return;
+        requestAnimationFrame(() => target()?.focus({ preventScroll: true }));
+      }),
+    [],
+  );
   return null;
 }
 
@@ -74,8 +95,11 @@ export function TourCard({ placement }: { placement: "panel" | "stage" }) {
   const nextRef = useRef<HTMLButtonElement>(null);
   const cardRef = useRef<HTMLElement>(null);
 
+  // On the next frame: a dialog that started the tour is closed (and the page outside it inert) until then.
   useEffect(() => {
-    if (tour.active) nextRef.current?.focus({ preventScroll: true });
+    if (!tour.active) return;
+    const raf = requestAnimationFrame(() => nextRef.current?.focus({ preventScroll: true }));
+    return () => cancelAnimationFrame(raf);
   }, [tour.active]);
 
   // Keep the card in view inside the scrolling console.
@@ -91,11 +115,12 @@ export function TourCard({ placement }: { placement: "panel" | "stage" }) {
   return (
     <section
       ref={cardRef}
+      data-tour-card
       aria-label="Guided tour"
       className={
         placement === "panel"
           ? "scroll-mt-2 border-b-2 border-amber bg-[#1b2b4f] px-4 py-4"
-          : "pointer-events-auto w-[min(34rem,calc(100vw-1.5rem))] rounded-xl border border-amber/70 bg-navy-deep/95 p-4 shadow-2xl"
+          : "pointer-events-auto w-full max-w-[34rem] rounded-xl border border-amber/70 bg-navy-deep/95 p-4 shadow-2xl"
       }
     >
       <div className="flex items-start justify-between gap-3">
@@ -127,10 +152,16 @@ export function TourCard({ placement }: { placement: "panel" | "stage" }) {
           ))}
         </div>
         <div className="ms-auto flex gap-2">
-          <Button onClick={() => go(tour.step - 1)} disabled={tour.step === 0} aria-keyshortcuts="PageUp">
+          <Button data-tour-back onClick={() => go(tour.step - 1)} disabled={tour.step === 0} aria-keyshortcuts="PageUp">
             Back
           </Button>
-          <Button ref={nextRef} variant="primary" onClick={() => (last ? endTour() : go(tour.step + 1))} aria-keyshortcuts="PageDown">
+          <Button
+            ref={nextRef}
+            data-tour-next
+            variant="primary"
+            onClick={() => (last ? endTour() : go(tour.step + 1))}
+            aria-keyshortcuts="PageDown"
+          >
             {last ? "Finish" : "Next"} <Kbd>PgDn</Kbd>
           </Button>
         </div>
@@ -156,13 +187,14 @@ export function Announcer() {
 
   return (
     <>
+      {/* Keyed by id, so a repeated message is a new node and is announced again. */}
       <p role="status" aria-live="polite" aria-atomic="true" className="sr-only">
-        {announcement.text}
+        <span key={announcement.id}>{announcement.text}</span>
       </p>
       {visible && announcement.text && (
         <p
           aria-hidden
-          className="pointer-events-none max-w-[min(34rem,calc(100vw-2rem))] rounded-lg border border-line-strong bg-navy-deep/95 px-4 py-2 text-center text-sm text-paper shadow-xl"
+          className="pointer-events-none max-w-[34rem] rounded-lg border border-line-strong bg-navy-deep/95 px-4 py-2 text-center text-sm text-paper shadow-xl"
         >
           {announcement.text}
         </p>

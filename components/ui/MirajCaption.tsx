@@ -30,7 +30,7 @@ export function MirajCaption() {
 
   const current = MIRAJ_STEPS[step];
   return (
-    <div className="pointer-events-auto w-[min(36rem,calc(100vw-2rem))] rounded-lg border border-violet/60 bg-navy-deep/95 px-4 py-3 shadow-xl">
+    <div className="pointer-events-auto w-full max-w-[36rem] rounded-lg border border-violet/60 bg-navy-deep/95 px-4 py-3 shadow-xl">
       <ol className="mb-1.5 flex gap-1.5" aria-label="Miraj steps">
         {MIRAJ_STEPS.map((s, i) => (
           <li

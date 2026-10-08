@@ -1,9 +1,12 @@
 "use client";
 
+import { useRef } from "react";
 import { VIEWS } from "@/lib/camera";
 import { useLab, type ViewName } from "@/lib/store";
 import { Button } from "./controls";
 import { HelpIcon, KeyboardIcon, LabelIcon, PanelIcon, PauseIcon, PlayIcon, ResetIcon, SettingsIcon, StepIcon, TourIcon } from "./icons";
+
+const SPEEDS = [1, 0.25] as const;
 
 /** PhET-style time controls: Play/Pause, Step (while paused) and a speed choice. */
 export function TimeControls() {
@@ -12,6 +15,17 @@ export function TimeControls() {
   const togglePause = useLab((s) => s.togglePause);
   const step = useLab((s) => s.step);
   const setSpeed = useLab((s) => s.setSpeed);
+  const radios = useRef<(HTMLButtonElement | null)[]>([]);
+
+  // WAI-ARIA radio group: one tab stop (the checked option); the arrow keys choose and focus the other.
+  const onRadioKeyDown = (e: React.KeyboardEvent, index: number) => {
+    const delta = e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : e.key === "ArrowLeft" || e.key === "ArrowUp" ? -1 : 0;
+    if (!delta) return;
+    e.preventDefault();
+    const next = (index + delta + SPEEDS.length) % SPEEDS.length;
+    setSpeed(SPEEDS[next]);
+    radios.current[next]?.focus();
+  };
 
   return (
     <div
@@ -39,13 +53,18 @@ export function TimeControls() {
         <StepIcon />
       </button>
       <div role="radiogroup" aria-label="Speed" className="flex rounded-full border border-line-strong p-0.5">
-        {([1, 0.25] as const).map((s) => (
+        {SPEEDS.map((s, i) => (
           <button
             key={s}
+            ref={(el) => {
+              radios.current[i] = el;
+            }}
             type="button"
             role="radio"
             aria-checked={speed === s}
+            tabIndex={speed === s ? 0 : -1}
             onClick={() => setSpeed(s)}
+            onKeyDown={(e) => onRadioKeyDown(e, i)}
             className={`min-h-9 rounded-full px-3 text-xs font-semibold transition-[background-color,color] ${
               speed === s ? "bg-paper text-navy-deep" : "text-paper-2 hover:text-paper"
             }`}
@@ -58,19 +77,21 @@ export function TimeControls() {
   );
 }
 
-/** The round "Reset all" button (PhET convention), bottom-right of the view. */
-export function ResetAllButton() {
+/** The round "Reset all" button (PhET convention): bottom-right of the view, or in the menu on phones. */
+export function ResetAllButton({ compact = false }: { compact?: boolean }) {
   const resetAll = useLab((s) => s.resetAll);
   return (
     <button
       type="button"
       onClick={resetAll}
       aria-label="Reset all"
-      aria-keyshortcuts="Alt+Shift+R"
-      title="Reset all (Alt+Shift+R)"
-      className="pointer-events-auto flex h-12 w-12 items-center justify-center rounded-full border-2 border-amber bg-navy-deep text-amber shadow-xl hover:bg-amber hover:text-navy-deep"
+      aria-keyshortcuts="Alt+Shift+Backspace"
+      title="Reset all (Alt+Shift+Backspace)"
+      className={`pointer-events-auto flex shrink-0 items-center justify-center rounded-full border-2 border-amber bg-navy-deep text-amber shadow-xl hover:bg-amber hover:text-navy-deep ${
+        compact ? "h-10 w-10 pointer-coarse:h-11 pointer-coarse:w-11" : "h-12 w-12"
+      }`}
     >
-      <ResetIcon className="h-6 w-6" />
+      <ResetIcon className={compact ? "h-5 w-5" : "h-6 w-6"} />
     </button>
   );
 }
@@ -136,7 +157,7 @@ export function Header({ compact }: { compact: boolean }) {
   );
 }
 
-/** Tour, help, keyboard and settings buttons, top-right of the view. */
+/** Tour, help, keyboard and settings buttons, top-right of the view (plus Reset all on phones). */
 export function Toolbar({ compact }: { compact: boolean }) {
   const startTour = useLab((s) => s.startTour);
   const openDialog = useLab((s) => s.openDialog);
@@ -160,7 +181,7 @@ export function Toolbar({ compact }: { compact: boolean }) {
   );
   return (
     <nav aria-label="Lab menu" className="flex flex-wrap justify-end gap-1.5">
-      {!tourActive && item("Guided tour", <TourIcon />, startTour, !compact, { "aria-keyshortcuts": "T" })}
+      {!tourActive && item("Guided tour", <TourIcon />, startTour, !compact, { id: "start-tour", "aria-keyshortcuts": "T" })}
       <Button
         variant="secondary"
         onClick={() => updateSettings({ labels: !labels })}
@@ -179,10 +200,12 @@ export function Toolbar({ compact }: { compact: boolean }) {
       {!compact &&
         !panelOpen &&
         item("Show controls", <PanelIcon />, togglePanel, true, {
+          id: "show-controls",
           "aria-controls": "console",
           "aria-expanded": "false",
           "aria-keyshortcuts": "H",
         })}
+      {compact && <ResetAllButton compact />}
     </nav>
   );
 }

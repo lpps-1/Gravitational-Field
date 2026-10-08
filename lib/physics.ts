@@ -95,8 +95,12 @@ export function orbitalGM(m: number): number {
   return 2.6 * m;
 }
 
-/** Below this (eased) mass the bodies are released from their orbits. */
-export const ORBIT_RELEASE_MASS = 0.02;
+/**
+ * Below this (eased) mass there is no central mass: the body is hidden and the
+ * orbiting bodies are released. Half the smallest non-zero slider value (1 → 0.01),
+ * so every setting the readouts call "in orbit" really is.
+ */
+export const ORBIT_RELEASE_MASS = 0.005;
 
 /** Solve Kepler's equation M = E − e·sin(E) for the eccentric anomaly E. */
 export function solveKepler(meanAnomaly: number, e: number): number {
@@ -174,7 +178,7 @@ export function tracePhoton(m: number, b: number): PhotonPath {
   for (let i = 0; i < 6000 && arc.length < PHOTON_MAX_POINTS - 1; i++) {
     const r2 = x * x + z * z;
     const r = Math.sqrt(r2);
-    if (m > 0.005 && r < captureR) {
+    if (m > ORBIT_RELEASE_MASS && r < captureR) {
       captured = true;
       break;
     }

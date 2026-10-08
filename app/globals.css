@@ -56,9 +56,21 @@ body {
   outline-offset: 2px;
   box-shadow: 0 0 0 4px var(--color-navy-deep);
 }
+/* The canvas covers the 3D view, so its ring is drawn on a layer above it (and the
+   scanlines), below the labels and overlays, around the part the console leaves free. */
 [data-stage]:focus-visible {
-  outline-offset: -4px;
+  outline: none;
   box-shadow: none;
+}
+[data-stage]:focus-visible::after {
+  content: "";
+  position: absolute;
+  inset: 0 var(--stage-right, 0px) var(--stage-bottom, 0px) 0;
+  z-index: 15;
+  pointer-events: none;
+  box-shadow:
+    inset 0 0 0 3px var(--color-amber),
+    inset 0 0 0 5px var(--color-navy-deep);
 }
 
 /* ---------- Range sliders ---------- */
@@ -123,6 +135,12 @@ body {
 /* ---------- Retro monitor overlay (under the UI, over the 3D view) ---------- */
 .crt-scanlines {
   background: repeating-linear-gradient(to bottom, transparent 0 2px, rgb(4 10 28 / 0.16) 2px 3px);
+}
+/* Without the bloom pass there is no GPU vignette: draw it in the same static layer. */
+.crt-vignette {
+  background:
+    repeating-linear-gradient(to bottom, transparent 0 2px, rgb(4 10 28 / 0.16) 2px 3px),
+    radial-gradient(ellipse at center, transparent 55%, rgb(6 12 30 / 0.45) 100%);
 }
 .crt-sweep {
   position: absolute;
@@ -208,6 +226,6 @@ html[data-reduce-motion="true"] *::before,
 html[data-reduce-motion="true"] *::after {
   transition-duration: 0.01ms !important;
 }
-html[data-tier="low"] .crt-sweep {
+html:not([data-tier="high"]) .crt-sweep {
   display: none;
 }

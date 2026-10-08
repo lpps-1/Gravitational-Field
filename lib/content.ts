@@ -63,7 +63,7 @@ export const MODULES: Record<ModuleId, ModuleContent> = {
     ],
     verse: {
       arabic: "وَكُلٌّ فِي فَلَكٍ يَسْبَحُونَ",
-      translation: "“…and each, in an orbit, is swimming.”",
+      translation: "“…but each, in an orbit, is swimming.”",
       reference: "Yā-Sīn 36:40 (see also Al-Anbiyāʾ 21:33)",
       note: "Yasbaḥūn: “swimming” or “floating”.",
     },
@@ -132,12 +132,12 @@ export const MODULES: Record<ModuleId, ModuleContent> = {
     ],
     tryIt: [
       "Engage the Miraj and follow the four steps shown at the top of the view.",
-      "Press Fire (Space) to send more light through the tunnel; use Slow motion to follow it.",
+      "Press “Send light through the tunnel” (Space) to send more light; use Slow motion to follow it.",
       "Choose the view “Up the tunnel” to look straight up the throat.",
     ],
     verse: {
       arabic: "سُبْحَانَ الَّذِي أَسْرَىٰ بِعَبْدِهِ لَيْلًا · الَّذِي خَلَقَ سَبْعَ سَمَاوَاتٍ طِبَاقًا",
-      translation: "“Exalted is He who took His Servant by night…” · “[He] who created seven heavens in layers.”",
+      translation: "“Exalted is He who took His Servant by night…” · “…who created seven heavens in layers.”",
       reference: "Al-Isrāʾ 17:1 · Al-Mulk 67:3",
     },
     scale: "An analogy, not a model: no known physics lets a person travel this way.",

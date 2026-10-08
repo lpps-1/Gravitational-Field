@@ -87,5 +87,5 @@ export function isWideLayout(): boolean {
   return window.matchMedia(WIDE_QUERY).matches;
 }
 
-/** Console width on wide layouts (px, before the text-size multiplier). */
+/** Console width on wide layouts (px; fixed, so a large text size does not squeeze the 3D view). */
 export const CONSOLE_WIDTH = 380;

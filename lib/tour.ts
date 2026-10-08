@@ -39,7 +39,7 @@ export const TOUR: TourStep[] = [
     title: "Floating in orbits (yasbaḥūn)",
     body: "Planets are not pulled along on strings. Each moves freely along the straightest path it can through curved spacetime, and around a mass that path is an orbit.",
     look: "The elliptical orbit is fastest when it passes closest to the mass.",
-    verse: "“…and each, in an orbit, is swimming” (Yā-Sīn 36:40).",
+    verse: "“…but each, in an orbit, is swimming” (Yā-Sīn 36:40).",
     module: "A",
     view: "overview",
     enter: (lab) => {
@@ -114,6 +114,7 @@ export const TOUR: TourStep[] = [
     body: "Now the scene becomes seven skies, one above another. Follow the four steps shown at the top of the view.",
     verse: "“…who created seven heavens in layers” (Al-Mulk 67:3).",
     module: "D",
+    view: "skies",
     enter: (lab) => {
       lab.setMiraj(true);
     },
@@ -121,7 +122,7 @@ export const TOUR: TourStep[] = [
   {
     title: "Through the tunnel",
     body: "Folded, the skies form one tunnel. Light crosses all seven in a fraction of a second, along a route far shorter than the way across them.",
-    look: "You are looking straight up the tunnel. Press Fire to send more light.",
+    look: "You are looking straight up the tunnel. Press “Send light through the tunnel” (Space) to send more.",
     module: "D",
     view: "under",
     enter: (lab) => {
