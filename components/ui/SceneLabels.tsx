@@ -13,7 +13,7 @@ export function SceneLabels() {
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0 z-20 overflow-hidden">
       {Object.entries(SCENE_LABELS).map(([id, text]) => (
-        <ScreenAnchor key={id} id={id} origin={id === "mass" ? "top" : "bottom"}>
+        <ScreenAnchor key={id} id={id} origin={id === "mass" ? "top" : id === "tunnel" ? "left" : "bottom"}>
           <span className="scene-label">{text}</span>
         </ScreenAnchor>
       ))}

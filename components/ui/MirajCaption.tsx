@@ -15,7 +15,7 @@ export function mirajStep(): number {
 }
 
 /** Step-by-step captions for the Miraj sequence, at the top of the 3D view. */
-export function MirajCaption() {
+export function MirajCaption({ compact = false }: { compact?: boolean }) {
   const miraj = useLab((s) => s.miraj);
   const step = useSimValue(mirajStep);
   if (step < 0) return null;
@@ -51,7 +51,8 @@ export function MirajCaption() {
       </p>
       <p className="text-sm text-paper-2">{current.detail}</p>
       {step === 3 && <RouteComparison />}
-      <p className="mt-1 text-xs text-paper-3">{MIRAJ_FOOTNOTE}</p>
+      {/* On phones the same caveat is in the Seven skies explanation; the caption keeps to the step. */}
+      {!compact && <p className="mt-1 text-xs text-paper-3">{MIRAJ_FOOTNOTE}</p>}
     </div>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useRef } from "react";
 import { MODULES, TRANSLATION_CREDIT, VERSE_FRAMING, type LegendSwatch, type Verse } from "@/lib/content";
+import { formatRate } from "@/lib/format";
 import { useSimValue } from "@/lib/hooks";
 import { MAX_DEPTH, SUN_DEFLECTION_DEG, curvatureLevel, equivalentRadius } from "@/lib/physics";
 import { sim, useLab, type ModuleId } from "@/lib/store";
@@ -155,9 +156,9 @@ function LiveB() {
 function LiveC() {
   const setView = useLab((s) => s.setView);
   const resetClocks = useLab((s) => s.resetClocks);
-  const rate = useSimValue(() => Math.round(sim.rateB * 100));
+  const rate = useSimValue(() => formatRate(sim.rateB));
   const behind = useSimValue(() => (sim.clockA - sim.clockB).toFixed(1));
-  const radius = useSimValue(() => (sim.rateB < 0.995 ? equivalentRadius(sim.rateB).toFixed(1) : null));
+  const radius = useSimValue(() => (sim.rateB < 1 - 1e-6 ? equivalentRadius(sim.rateB).toFixed(1) : null));
   return (
     <div className="space-y-2">
       <dl className="rounded-md border border-line bg-navy-raised px-3 py-2">

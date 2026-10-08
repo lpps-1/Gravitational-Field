@@ -15,10 +15,11 @@ export interface Anchor {
   opacity: number;
   /** Emphasise the label (e.g. a sky the tunnel light has just passed). */
   highlight: boolean;
-  /** How the label sits on its point: centred above/below it, or starting just right of it. */
-  align: "center" | "start";
-  /** Rendered label width (px), measured once. */
+  /** How the label sits on its point: centred above it, centred below it, or just right of it. */
+  origin: "bottom" | "top" | "left";
+  /** Rendered label size (px), measured once. */
   width: number;
+  height: number;
   /** Last values written to the DOM, so unchanged frames cost nothing. */
   written: { transform: string; opacity: string; shown: boolean | null; highlight: boolean | null };
 }
@@ -34,8 +35,9 @@ export function getAnchor(id: string): Anchor {
       visible: false,
       opacity: 1,
       highlight: false,
-      align: "center",
+      origin: "bottom",
       width: 0,
+      height: 0,
       written: { transform: "", opacity: "", shown: null, highlight: null },
     };
     anchors.set(id, a);

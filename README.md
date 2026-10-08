@@ -77,7 +77,7 @@ Single-key shortcuts can be turned off in Settings. Then use `Alt+Shift` with th
 - Photon paths and orbit trails reuse preallocated buffers, so there is no per-frame garbage.
 - The graphics level is chosen before the 3D view is created, from the graphics hardware the browser reports, so nothing is built twice. Only the Full level runs the bloom pass (at half resolution); Light and Minimal draw straight to the screen.
 - Resolution adapts to the measured frame rate. Minimal holds a steady 30 frames per second, so the processor stays free for the interface.
-- Measured with software rendering (no graphics acceleration, 4-core processor, 1366×768): about 2.5 frames per second before, 25–30 after.
+- Worst case measured: software rendering only (no graphics hardware at all, 4-core processor, 1366×768). Before: about 2.5 frames per second. Now: about 29 at rest, 16–21 while a photon flies or the Miraj runs. With built-in graphics such as Intel UHD, the browser hands this work to the graphics chip and it runs considerably faster.
 - The scanline overlay is static and sits under the interface. There is no backdrop blur over the 3D view.
 
 ## Project layout

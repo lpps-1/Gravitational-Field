@@ -76,8 +76,9 @@ export function probeGraphics(): GraphicsProbe {
   };
   // Browsers refuse a "major performance caveat" context when they would
   // draw in software, which identifies software rendering reliably.
-  const fast = context({ failIfMajorPerformanceCaveat: true });
-  const gl = fast ?? context({});
+  // Same power preference as the real canvas, so dual-GPU laptops report the GPU the lab will use.
+  const fast = context({ failIfMajorPerformanceCaveat: true, powerPreference: "high-performance" });
+  const gl = fast ?? context({ powerPreference: "high-performance" });
   if (!gl) {
     probed = { webgl: false, software: false, renderer: "", tier: "cpu" };
     return probed;
@@ -112,8 +113,13 @@ export function graphicsName(probe: GraphicsProbe): string {
   if (!probe.webgl) return "no 3D graphics available";
   if (probe.software) return "software rendering (no graphics acceleration)";
   let name = probe.renderer;
+  // e.g. "ANGLE (Intel, Intel(R) UHD Graphics 620 (0x00003EA0) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+  // or "ANGLE (Apple, ANGLE Metal Renderer: Apple M1, Unspecified Version)".
   const angle = /^ANGLE \((.*)\)$/.exec(name);
   if (angle) name = angle[1].split(", ")[1] ?? angle[1];
-  name = name.replace(/\(0x[0-9a-f]+\)/gi, "").replace(/\s*(Direct3D|OpenGL|Metal|Vulkan).*$/i, "").trim();
+  name = name.replace(/^ANGLE \w+ Renderer:\s*/i, "");
+  const vulkan = /^Vulkan [\d.]+ \((.*)\)$/.exec(name);
+  if (vulkan) name = vulkan[1];
+  name = name.replace(/\(0x[0-9a-f]+\)/gi, "").replace(/\s+(Direct3D|OpenGL|Metal|Vulkan).*$/i, "").trim();
   return name || "graphics name hidden by the browser";
 }

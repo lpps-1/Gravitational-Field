@@ -7,6 +7,7 @@ import { getAnchor } from "@/lib/anchors";
 import { formatDegrees } from "@/lib/format";
 import { createFatLine, disposeFatLine, lineColorArray, writeLinePoints, type FatLine } from "@/lib/lines";
 import { GRID_HALF, PHOTON_LIFT, PHOTON_MAX_POINTS, SUN_DEFLECTION_DEG, tracePhoton, type PhotonPath } from "@/lib/physics";
+import { TIERS } from "@/lib/quality";
 import { sim, useLab } from "@/lib/store";
 import { createHaloSprite, halosEnabled } from "./Halo";
 
@@ -150,7 +151,7 @@ export function PhotonBeams() {
       }
     }
     sim.photonFlying = flying || pool.queued;
-    updateLabels(latest);
+    updateLabels(latest, camera);
   });
 
   return <primitive object={pool.group} />;
@@ -239,9 +240,12 @@ function arrive(slot: Slot) {
     slot.flash.scale.setScalar(1.2);
   } else {
     slot.observer.position.copy(end);
-    // Where the observer sees the star: straight back along the arriving light, to the far edge of the grid.
+    // Where the observer sees the star: straight back along the arriving light, at the true star's
+    // distance (as in a lensing diagram), but never past an inset edge of the grid, where it would
+    // sit under the controls or out of view.
     const [dx, dz] = data.exitDir;
-    const t = sightDistance(end.x, end.z, dx, dz);
+    const starDistance = Math.hypot(end.x - data.points[0], end.z - data.points[2]);
+    const t = Math.min(sightDistance(end.x, end.z, dx, dz, GRID_HALF - 2), starDistance);
     if (data.deflection > 0.5 && t > 1) {
       slot.apparent = new THREE.Vector3(end.x - dx * t, PHOTON_LIFT, end.z - dz * t);
       writeLinePoints(slot.sight, [end.x, PHOTON_LIFT, end.z, slot.apparent.x, slot.apparent.y, slot.apparent.z], 2);
@@ -263,9 +267,10 @@ function arrive(slot: Slot) {
 
 /**
  * How far back from the observer (x, z) the line of sight runs against the
- * arriving direction (dx, dz) before it leaves the grid (0 if it never crosses it).
+ * arriving direction (dx, dz) before it leaves the square |x|, |z| <= half
+ * (0 if it never crosses it).
  */
-function sightDistance(x: number, z: number, dx: number, dz: number): number {
+function sightDistance(x: number, z: number, dx: number, dz: number, half: number): number {
   let near = 0;
   let far = Infinity;
   for (const [p, d] of [
@@ -273,11 +278,11 @@ function sightDistance(x: number, z: number, dx: number, dz: number): number {
     [z, -dz],
   ]) {
     if (Math.abs(d) < 1e-9) {
-      if (Math.abs(p) > GRID_HALF) return 0;
+      if (Math.abs(p) > half) return 0;
       continue;
     }
-    const t1 = (-GRID_HALF - p) / d;
-    const t2 = (GRID_HALF - p) / d;
+    const t1 = (-half - p) / d;
+    const t2 = (half - p) / d;
     near = Math.max(near, Math.min(t1, t2));
     far = Math.min(far, Math.max(t1, t2));
   }
@@ -289,10 +294,13 @@ function paint(slot: Slot, s: number, level: number, streak = true) {
   const data = slot.data;
   if (!data) return;
   const { array, commit } = lineColorArray(slot.path);
+  // Drawn straight to the screen (no bloom), the path's overlapping segments add up and would
+  // clip to white, so the latest path would look no brighter than older ones.
+  const gain = TIERS[useLab.getState().tier].bloom ? 1 : 0.45;
   const intensity = (k: number) => {
     const d = s - data.arc[k];
     if (d < 0) return 0;
-    return level + (streak && d < STREAK ? Math.pow(1 - d / STREAK, 1.6) * 3 : 0);
+    return gain * (level + (streak && d < STREAK ? Math.pow(1 - d / STREAK, 1.6) * 3 : 0));
   };
   let prev = intensity(0);
   for (let k = 0; k < data.count - 1; k++) {
@@ -329,20 +337,25 @@ function hide(slot: Slot) {
   }
 }
 
-function updateLabels(latest: Slot | null) {
+const screenUp = new THREE.Vector3();
+const guidePoint = new THREE.Vector3();
+
+function updateLabels(latest: Slot | null, camera: THREE.Camera) {
   const data = latest?.data;
   const arrived = latest?.state === "shown";
+  // Lift labels towards the top of the screen, so a camera looking straight down does not put them on their object.
+  screenUp.set(0, 1, 0).applyQuaternion(camera.quaternion);
   const set = (id: string, visible: boolean, p?: THREE.Vector3, lift = 1) => {
     const a = getAnchor(id);
     a.visible = visible && sim.expand < 0.02;
-    if (visible && p) a.world.set(p.x, p.y + lift, p.z);
+    if (visible && p) a.world.copy(p).addScaledVector(screenUp, lift);
   };
   set("lens-star", !!latest && (arrived || latest.state === "flying"), latest?.star.position);
   set("lens-observer", !!data && arrived && !data.captured, latest?.observer.position);
   set("lens-apparent", !!latest && arrived && !!latest.apparent, latest?.apparent ?? undefined);
   set("lens-hit", !!data && arrived && data.captured, latest?.flash.position, 1.6);
   if (latest && data && (arrived || latest.state === "flying") && latest.massSlider > 0) {
-    set("lens-guide", true, new THREE.Vector3(GRID_HALF - 3, PHOTON_LIFT, data.impact), 0.6);
+    set("lens-guide", true, guidePoint.set(GRID_HALF - 3, PHOTON_LIFT, data.impact), 0.6);
   } else set("lens-guide", false);
 }
 

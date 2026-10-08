@@ -21,7 +21,7 @@ export function ScreenAnchor({
     (el: HTMLDivElement | null) => {
       const a = getAnchor(id);
       a.el = el;
-      a.align = origin === "left" ? "start" : "center";
+      a.origin = origin;
       a.width = 0;
       a.written = { transform: "", opacity: "", shown: null, highlight: null };
     },

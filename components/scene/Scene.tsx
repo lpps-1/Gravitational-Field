@@ -60,7 +60,7 @@ function LabCanvas() {
   return (
     <Canvas
       flat
-      dpr={pixelRatio(spec, resolution)}
+      dpr={pixelRatioRange(spec, resolution)}
       frameloop={spec.fps ? "never" : "always"}
       camera={{ position: VIEWS.overview.position, fov: 45, near: 0.1, far: 400 }}
       gl={gl}
@@ -88,11 +88,24 @@ function LabCanvas() {
   );
 }
 
-/** Device pixels per CSS pixel for a tier at a position (0..1) in its range, never above the screen's own. */
-function pixelRatio(spec: TierSpec, resolution: number) {
+/** Upper end of the render resolution for a tier at a position (0..1) in its range. */
+function resolutionCap(spec: TierSpec, resolution: number) {
   const [lo, hi] = spec.dpr;
-  const ratio = Math.min(window.devicePixelRatio || 1, lo + (hi - lo) * resolution);
-  return Math.round(ratio * 100) / 100;
+  return Math.round((lo + (hi - lo) * resolution) * 100) / 100;
+}
+
+/**
+ * Device pixels per CSS pixel as a range: R3F clamps the screen's own ratio
+ * into it whenever the canvas reconfigures, so browser zoom or a move to
+ * another display is followed.
+ */
+function pixelRatioRange(spec: TierSpec, resolution: number): [number, number] {
+  return [spec.dpr[0], resolutionCap(spec, resolution)];
+}
+
+/** The ratio actually used at a resolution position on this screen. */
+function effectiveRatio(spec: TierSpec, resolution: number) {
+  return Math.min(Math.max(spec.dpr[0], window.devicePixelRatio || 1), resolutionCap(spec, resolution));
 }
 
 function onCreated(gl: THREE.WebGLRenderer) {
@@ -126,7 +139,7 @@ function NoWebGL() {
           <li>Update the graphics driver (Windows Update → Advanced options → Optional updates).</li>
           <li>Or open the lab in another up-to-date browser, such as Firefox.</li>
         </ol>
-        <p className="mt-3 text-xs text-paper-3">The explanations, clocks and graph in the side panel still work.</p>
+        <p className="mt-3 text-xs text-paper-3">The explanations in the side panel are still available.</p>
       </div>
     </div>
   );
@@ -235,43 +248,50 @@ function FrameCap({ fps }: { fps: number }) {
   const get = useThree((s) => s.get);
 
   useEffect(() => {
-    const clock = get().clock;
-    // In "never" mode R3F takes the time from advance(); a self-starting clock would corrupt it.
-    clock.autoStart = false;
+    // A frame R3F's own loop still owed from before the switch would run in
+    // "never" mode with a millisecond timestamp and corrupt the clock.
+    get().internal.frames = 0;
     const interval = 1000 / fps;
-    let time = clock.elapsedTime;
-    let last = performance.now();
+    let slot = performance.now();
+    let prev = slot;
     let raf = 0;
     const tick = (now: number) => {
       raf = requestAnimationFrame(tick);
-      const elapsed = now - last;
-      if (elapsed < interval - 4) return;
-      last = elapsed > interval * 2 ? now : last + interval;
-      time += Math.min(elapsed, 250) / 1000;
-      get().advance(time, true);
+      // Pacing: render on the first display frame of each interval.
+      const late = now - slot;
+      if (late < interval - 4) return;
+      slot = late > interval * 2 ? now : slot + interval;
+      // Time: exactly what passed since the last rendered frame, counted
+      // from R3F's own clock so no stray update can make it negative.
+      const step = Math.min(now - prev, 250) / 1000;
+      prev = now;
+      const state = get();
+      state.advance(state.clock.elapsedTime + step, true);
     };
     raf = requestAnimationFrame(tick);
-    return () => {
-      cancelAnimationFrame(raf);
-      clock.autoStart = true;
-    };
+    return () => cancelAnimationFrame(raf);
   }, [fps, get]);
 
   return null;
 }
 
-/** Seconds per frame-rate sample. */
+/** Milliseconds per frame-rate sample. */
 const SAMPLE_MS = 1000;
+/** Below this, motion looks jerky on any screen. */
+const FPS_FLOOR = 24;
 
 /**
- * Keeps the frame rate up. Each second it measures the frame rate. Three slow
- * seconds in a row lower the resolution a step; at the tier's lowest
- * resolution, automatic mode moves down a tier. Five fast seconds in a row
- * raise the resolution again, but never the tier, and only a few times, so
- * the view never flickers between settings.
+ * Keeps the frame rate up. Each second it measures the frame rate against a
+ * goal: the tier's cap or 60, but never more than the best rate this screen
+ * has shown (a 30 Hz projector or a browser energy saver caps every frame
+ * rate, and that must not read as a slow computer). Three slow seconds in a
+ * row lower the resolution a step; at the tier's lowest resolution,
+ * automatic mode moves down a tier. Five fast seconds in a row raise the
+ * resolution again, but never the tier, and only a few times, so the view
+ * never flickers between settings.
  */
 function AdaptiveQuality() {
-  const st = useRef({ frames: 0, start: 0, slow: 0, fast: 0, settle: 2, raises: 0 });
+  const st = useRef({ frames: 0, start: 0, best: 0, slow: 0, fast: 0, settle: 2, raises: 0 });
 
   useFrame(() => {
     const s = st.current;
@@ -288,14 +308,16 @@ function AdaptiveQuality() {
     s.start = now;
     // A hidden tab or a long stall (e.g. a dialog opening) says nothing about the scene.
     if (document.hidden || elapsed > SAMPLE_MS * 3) return;
+    s.best = Math.max(s.best, fps);
     if (s.settle > 0) {
       s.settle--;
       return;
     }
 
     const lab = useLab.getState();
-    const goal = TIERS[lab.tier].fps || 60;
-    if (fps < goal * 0.75) {
+    const spec = TIERS[lab.tier];
+    const goal = Math.min(spec.fps || 60, s.best);
+    if (fps < goal * 0.75 || fps < FPS_FLOOR) {
       s.slow++;
       s.fast = 0;
     } else if (fps >= goal * 0.93) {
@@ -308,10 +330,14 @@ function AdaptiveQuality() {
     if (s.slow >= 3) {
       s.slow = 0;
       s.settle = 2;
-      if (lab.resolution > 0) lab.setResolution(Math.max(0, lab.resolution - 0.5));
+      // Skip resolution steps that change nothing on this screen.
+      const ratio = effectiveRatio(spec, lab.resolution);
+      let next = lab.resolution;
+      while (next > 0 && effectiveRatio(spec, next) >= ratio) next = Math.max(0, next - 0.5);
+      if (effectiveRatio(spec, next) < ratio) lab.setResolution(next);
       else if (lab.settings.quality === "auto") {
-        const next = lowerTier(lab.tier);
-        if (next) lab.setTier(next);
+        const lower = lowerTier(lab.tier);
+        if (lower) lab.setTier(lower);
       }
     } else if (s.fast >= 5 && lab.resolution < 1 && s.raises < 4) {
       s.fast = 0;

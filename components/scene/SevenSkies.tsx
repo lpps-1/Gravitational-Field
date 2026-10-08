@@ -80,7 +80,8 @@ export function SevenSkies() {
       label.highlight = sim.transitActive && sim.skyPassed >= i;
     }
     const tunnelLabel = getAnchor("tunnel");
-    tunnelLabel.world.set(THROAT_RADIUS + 0.4, TUNNEL_TOP + 1.4, 0);
+    // Beside the throat low down, clear of the step caption at the top of the view and of the Sky labels.
+    tunnelLabel.world.set(THROAT_RADIUS + 0.6, skyHeight(0.5, expand), 0);
     tunnelLabel.visible = fold > 0.95;
     tunnelLabel.opacity = Math.min(1, (fold - 0.95) * 20);
   });

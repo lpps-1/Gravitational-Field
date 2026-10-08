@@ -19,6 +19,16 @@ export function formatSeconds(seconds: number, digits = 1): string {
   return `${seconds.toFixed(digits)} s`;
 }
 
+/**
+ * Clock B's rate as a percentage of Clock A's. One decimal close to 100%, so
+ * a small but real slowing never reads as "100%".
+ */
+export function formatRate(rate: number): string {
+  const pct = rate * 100;
+  if (pct >= 99.95) return "100";
+  return pct > 99 ? pct.toFixed(1) : String(Math.round(pct));
+}
+
 function pad(n: number): string {
   return n.toString().padStart(2, "0");
 }

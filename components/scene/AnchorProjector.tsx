@@ -37,11 +37,23 @@ export function AnchorProjector() {
       }
       if (!shown) return;
       // Keep the whole label inside the view: measure once, then clamp.
-      if (!a.width) a.width = (el.firstElementChild as HTMLElement | null)?.offsetWidth ?? 0;
+      if (!a.width) {
+        const box = el.firstElementChild as HTMLElement | null;
+        a.width = box?.offsetWidth ?? 0;
+        a.height = box?.offsetHeight ?? 0;
+      }
       const right = Math.min(size.width, stageRect.right) - 8;
       const left = stageRect.left + 8;
-      if (a.align === "center") x = Math.min(Math.max(x, left + a.width / 2), right - a.width / 2);
-      else x = Math.min(Math.max(x, left - 10), right - 10 - a.width);
+      const top = stageRect.top + 8;
+      const bottom = Math.min(size.height, stageRect.bottom) - 8;
+      if (a.origin === "left") {
+        x = Math.min(Math.max(x, left - 10), right - 10 - a.width);
+        y = Math.min(Math.max(y, top + a.height / 2), bottom - a.height / 2);
+      } else {
+        x = Math.min(Math.max(x, left + a.width / 2), right - a.width / 2);
+        if (a.origin === "bottom") y = Math.min(Math.max(y, top + a.height), bottom);
+        else y = Math.min(Math.max(y, top), bottom - a.height - 6);
+      }
       const transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0)`;
       if (w.transform !== transform) {
         el.style.transform = transform;

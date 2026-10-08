@@ -1,14 +1,15 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { formatClock } from "@/lib/format";
+import { formatClock, formatRate } from "@/lib/format";
 import { sim } from "@/lib/store";
 
 /**
  * Two analog clocks side by side (top of the 3D view while the Time tab is
  * open). Their second hands sweep at each clock's own rate, so "Clock B runs
  * slow" can be seen from across the room, not just read. On phones the gap
- * between them is shown underneath, and the clocks stack at large text sizes.
+ * between them is shown underneath, with each dial above its reading so the
+ * two clocks always fit side by side.
  */
 export function ClockStrip({ compact = false }: { compact?: boolean }) {
   const handA = useRef<SVGLineElement>(null);
@@ -27,7 +28,7 @@ export function ClockStrip({ compact = false }: { compact?: boolean }) {
       handB.current?.setAttribute("transform", `rotate(${((sim.clockB % 60) * 6).toFixed(2)})`);
       const a = formatClock(sim.clockA);
       const b = formatClock(sim.clockB);
-      const r = `${Math.round(sim.rateB * 100)}% speed`;
+      const r = `${formatRate(sim.rateB)}% speed`;
       const l = `${(sim.clockA - sim.clockB).toFixed(1)} s`;
       if (a !== last.a && timeA.current) timeA.current.textContent = last.a = a;
       if (b !== last.b && timeB.current) timeB.current.textContent = last.b = b;
@@ -75,7 +76,8 @@ export function ClockStrip({ compact = false }: { compact?: boolean }) {
     >
       {compact ? (
         <>
-          <div className="flex flex-wrap justify-center gap-x-3 gap-y-2">
+          {/* Two columns that never wrap: Clock B must not fall below a clipped edge. */}
+          <div className="grid grid-cols-2 gap-x-3">
             {dialA}
             {dialB}
           </div>
@@ -110,7 +112,7 @@ function Dial({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center gap-2">
+    <div className={compact ? "flex flex-col items-center gap-1 text-center" : "flex items-center gap-2"}>
       <svg width={size} height={size} viewBox="-40 -40 80 80" aria-hidden>
         <circle r={37} fill="#0e1c3a" stroke="#7f97c4" strokeWidth={2} />
         {Array.from({ length: 12 }, (_, i) => (
@@ -126,7 +128,7 @@ function Dial({
         <line ref={hand} y1={6} y2={-31} stroke={color} strokeWidth={3} strokeLinecap="round" />
         <circle r={3.5} fill={color} />
       </svg>
-      <div className="flex flex-col gap-0.5">
+      <div className={`flex flex-col gap-0.5 ${compact ? "items-center" : ""}`}>
         <span className="text-xs font-semibold text-paper">
           {title}{" "}
           {compact ? <span className="block font-normal text-paper-3">{subtitle}</span> : <span className="font-normal text-paper-3">· {subtitle}</span>}

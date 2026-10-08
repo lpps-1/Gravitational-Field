@@ -30,6 +30,7 @@ export function SimDriver() {
 
   useEffect(() => {
     if (resets === 0) return;
+    sim.m = useLab.getState().mass / 100;
     sim.mirajTime = 0;
     sim.expand = 0;
     sim.fold = 0;
@@ -41,8 +42,10 @@ export function SimDriver() {
     if (steps > 0) pendingSteps.current += 1;
   }, [steps]);
 
-  useFrame((_, raw) => {
+  useFrame((_, delta) => {
     const { mass, miraj, paused, speed } = useLab.getState();
+    // Never trust the frame delta blindly: a negative or non-finite one would poison every value below.
+    const raw = Number.isFinite(delta) && delta > 0 ? delta : 0;
 
     let dt: number;
     let clockDt: number;
@@ -60,7 +63,7 @@ export function SimDriver() {
     // effect of a change is visible before pressing Play.
     const target = mass / 100;
     sim.m += (target - sim.m) * (1 - Math.exp(-Math.min(raw, 0.1) * 5));
-    if (Math.abs(target - sim.m) < 1e-4) sim.m = target;
+    if (Math.abs(target - sim.m) < 1e-4 || !Number.isFinite(sim.m)) sim.m = target;
 
     // Miraj timeline: separate the skies, hold, fold. Reverse on disengage.
     if (miraj) sim.mirajTime = Math.min(MIRAJ_TOTAL_SECONDS, sim.mirajTime + dt);

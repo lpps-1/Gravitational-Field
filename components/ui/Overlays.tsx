@@ -119,11 +119,12 @@ export function TourCard({ placement }: { placement: "panel" | "stage" }) {
       aria-label="Guided tour"
       className={
         placement === "panel"
-          ? "scroll-mt-2 border-b-2 border-amber bg-[#1b2b4f] px-4 py-4"
-          : "pointer-events-auto w-full max-w-[34rem] rounded-xl border border-amber/70 bg-navy-deep/95 p-4 shadow-2xl"
+          ? "flex scroll-mt-2 flex-col border-b-2 border-amber bg-[#1b2b4f] px-4 py-4"
+          : // Short of room, only the text scrolls: the step, Exit, Back and Next stay in view.
+            "pointer-events-auto flex min-h-0 w-full max-w-[34rem] flex-col rounded-xl border border-amber/70 bg-navy-deep/95 p-4 shadow-2xl"
       }
     >
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex shrink-0 items-start justify-between gap-3">
         <p className="font-mono text-xs font-semibold tracking-[0.1em] text-amber" aria-live="polite">
           GUIDED TOUR · STEP {tour.step + 1} OF {TOUR.length}
         </p>
@@ -136,13 +137,13 @@ export function TourCard({ placement }: { placement: "panel" | "stage" }) {
           <CloseIcon />
         </button>
       </div>
-      <div aria-live="polite">
+      <div aria-live="polite" className="min-h-0 overflow-y-auto">
         <h2 className="mt-1 text-lg font-semibold text-paper">{step.title}</h2>
         <p className="mt-1 text-[0.9375rem] leading-relaxed text-paper">{step.body}</p>
         {step.look && <p className="mt-1.5 text-sm text-phosphor">Look: {step.look}</p>}
         {step.verse && <p className="mt-1.5 text-sm italic text-violet-text">{step.verse}</p>}
       </div>
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+      <div className="mt-3 flex shrink-0 flex-wrap items-center justify-between gap-3">
         <div aria-hidden className="flex flex-1 gap-1">
           {TOUR.map((_, i) => (
             <span
@@ -174,7 +175,7 @@ export function TourCard({ placement }: { placement: "panel" | "stage" }) {
  * Status messages: announced politely to screen readers (WCAG 4.1.3) and
  * shown briefly as a toast for everyone watching.
  */
-export function Announcer() {
+export function Announcer({ toast = true }: { toast?: boolean }) {
   const announcement = useLab((s) => s.announcement);
   const [visible, setVisible] = useState(false);
 
@@ -191,7 +192,7 @@ export function Announcer() {
       <p role="status" aria-live="polite" aria-atomic="true" className="sr-only">
         <span key={announcement.id}>{announcement.text}</span>
       </p>
-      {visible && announcement.text && (
+      {toast && visible && announcement.text && (
         <p
           aria-hidden
           className="pointer-events-none max-w-[34rem] rounded-lg border border-line-strong bg-navy-deep/95 px-4 py-2 text-center text-sm text-paper shadow-xl"
