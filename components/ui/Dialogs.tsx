@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useId, useRef } from "react";
+import { CHAPTERS } from "@/lib/chapters";
+import { CREDITS } from "@/lib/credits";
 import { TIERS, graphicsName, probeGraphics } from "@/lib/quality";
 import { useLab, type QualityMode, type Settings } from "@/lib/store";
-import { Button } from "./controls";
-import { CloseIcon } from "./icons";
+import { Button, Kicker } from "./controls";
+import { ArrowRightIcon, CloseIcon } from "./icons";
 
 /**
  * Native <dialog> modals: the browser provides the focus trap, Escape to
@@ -36,18 +38,23 @@ function Modal({
       ref={ref}
       onClose={onClose}
       aria-labelledby={titleId}
-      className={`m-auto max-h-[85dvh] ${wide ? "w-[min(44rem,calc(100vw-2rem))]" : "w-[min(32rem,calc(100vw-2rem))]"} overflow-hidden rounded-xl border border-line-strong bg-navy-deep p-0 text-paper shadow-2xl`}
+      className={`m-auto max-h-[88dvh] ${wide ? "w-[min(46rem,calc(100vw-2rem))]" : "w-[min(34rem,calc(100vw-2rem))]"} overflow-hidden rounded-[22px] border border-white/16 bg-panel p-0 text-body shadow-[0_20px_60px_rgb(0_0_0/0.5)]`}
     >
-      <div className="flex max-h-[85dvh] flex-col">
-        <header className="flex items-center justify-between border-b border-line ps-5 pe-2 py-2">
-          <h2 id={titleId} className="text-lg font-semibold">
+      <div className="flex max-h-[88dvh] flex-col">
+        <header className="flex items-center justify-between gap-3 border-b border-rule py-2.5 ps-6 pe-2.5">
+          <h2 id={titleId} className="text-lg font-bold">
             {title}
           </h2>
-          <Button variant="ghost" onClick={onClose} aria-label="Close">
-            <CloseIcon />
-          </Button>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="flex h-10 w-10 items-center justify-center rounded-full text-body transition-colors hover:bg-white/10 hover:text-ink pointer-coarse:h-11 pointer-coarse:w-11"
+          >
+            <CloseIcon className="h-4.5 w-4.5" />
+          </button>
         </header>
-        <div className="overflow-y-auto px-5 py-4">{children}</div>
+        <div className="panel-scroll overflow-y-auto px-6 py-5">{children}</div>
       </div>
     </dialog>
   );
@@ -74,36 +81,70 @@ export function Dialogs() {
 function About() {
   const startTour = useLab((s) => s.startTour);
   return (
-    <div className="space-y-3 text-[0.9375rem] leading-relaxed text-paper">
+    <div className="space-y-6 text-[0.9375rem] leading-relaxed">
       <p>
-        <strong>Azeemi Gala · Spacetime Lab</strong> by Team LPPS is an interactive picture of how gravity shapes space, light and time,
-        shown alongside the Quranic themes of <em>yasbaḥūn</em> (bodies floating in their orbits) and the Miraj.
+        <strong className="text-ink">Spacetime Lab</strong>, for Azeemi Gala by Team LPPS, is an interactive picture of how gravity shapes
+        space, light and time, shown alongside the Quranic themes of <em>yasbaḥūn</em> (bodies floating in their orbits) and the Miraj.
       </p>
-      <h3 className="pt-1 font-mono text-xs font-semibold uppercase tracking-[0.1em] text-paper-2">How to use it</h3>
-      <ol className="list-decimal space-y-1 ps-5">
-        <li>Drag the 3D view to look around; scroll or pinch to zoom. The view buttons jump to useful angles.</li>
-        <li>Use the controls: change the central mass, fire light past it, and engage the Miraj.</li>
-        <li>The four tabs explain each idea, with live numbers, a colour key and things to try.</li>
-        <li>Pause, step or slow time with the controls at the bottom. The round button resets everything.</li>
-      </ol>
-      <h3 className="pt-1 font-mono text-xs font-semibold uppercase tracking-[0.1em] text-paper-2">An honest note</h3>
-      <p className="text-paper-2">
-        This is an illustration, not to scale. The effects are hugely exaggerated so they can be seen: real light passing the Sun bends by
-        only 0.0005°, and a clock on Earth loses only about 0.02 s a year to gravity. The “rubber sheet” grid is a teaching analogy;
-        traversable wormholes remain theoretical. The verses are shown as themes for reflection, not as scientific proof, and the science is
-        not presented as proof of scripture.
-      </p>
-      <div className="pt-2">
-        <Button variant="primary" onClick={startTour}>
-          Start the guided tour
-        </Button>
-      </div>
+
+      <section aria-labelledby="about-chapters">
+        <Kicker id="about-chapters">Six chapters</Kicker>
+        <ol className="mt-2.5 grid gap-x-6 gap-y-1 sm:grid-cols-2">
+          {CHAPTERS.map((c) => (
+            <li key={c.id} className="flex items-baseline gap-2.5">
+              <span className="font-mono text-xs text-ice">{c.number}</span>
+              <span className="text-ink">{c.short}</span>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <section aria-labelledby="about-use">
+        <Kicker id="about-use">How to use it</Kicker>
+        <ul className="mt-2.5 space-y-1.5">
+          <li>Choose a chapter at the top. Each one shows a single idea, with its notes on the right.</li>
+          <li>Drag the 3D view to look around; scroll or pinch to zoom. The View menu jumps to useful angles.</li>
+          <li>The dock at the bottom holds the chapter&apos;s controls, Play and Pause, slow motion and Reset all.</li>
+        </ul>
+      </section>
+
+      <section aria-labelledby="about-honest">
+        <Kicker id="about-honest">An honest note</Kicker>
+        <p className="mt-2.5 text-body">
+          Chapters 01 to 03 and 06 are illustrations, not to scale: real light passing the Sun bends by only
+          0.0005°, and a clock on Earth loses only about 0.02 s a year to gravity. The “rubber sheet” grid is a teaching analogy;
+          traversable wormholes remain theoretical. The Solar System chapter places every planet where it really is (sizes enlarged,
+          distances compressed), and the black hole is drawn with real light bending. The verses are shown as themes for reflection,
+          not as scientific proof, and the science is not presented as proof of scripture.
+        </p>
+      </section>
+
+      <section aria-labelledby="about-credits">
+        <Kicker id="about-credits">Credits</Kicker>
+        <ul className="mt-2.5 space-y-1.5 text-sm">
+          {CREDITS.map((c) => (
+            <li key={c.what}>
+              <span className="text-ink">{c.what}:</span> {c.who} ({c.licence}
+              {c.via ? `, ${c.via}` : ""}).
+            </li>
+          ))}
+          <li>
+            <span className="text-ink">Quran translation:</span> Sahih International.
+          </li>
+        </ul>
+      </section>
+
+      <Button variant="primary" onClick={startTour}>
+        Start the guided tour
+        <ArrowRightIcon className="h-4 w-4" />
+      </Button>
     </div>
   );
 }
 
 const KEYS: [string, string][] = [
-  ["Space", "Fire the photon beam (through the tunnel during the Miraj)"],
+  ["1 to 6", "Open a chapter"],
+  ["Space", "Fire light (through the tunnel during the Miraj)"],
   ["M", "Engage or disengage the Miraj"],
   ["P", "Play or pause"],
   [".", "Step forward while paused"],
@@ -112,7 +153,7 @@ const KEYS: [string, string][] = [
   ["[ and ]", "Central mass down or up by 5"],
   ["0 and 9", "Central mass to 0 or 100"],
   ["L", "Show or hide the labels"],
-  ["H", "Hide or show the controls"],
+  ["H", "Hide or show the chapter notes"],
   ["T", "Start the guided tour"],
   ["Page Down / Page Up", "Next or previous tour step (works with presentation clickers)"],
   ["?", "Open this list"],
@@ -123,30 +164,30 @@ const CAMERA_KEYS: [string, string][] = [
   ["Tab to the 3D view", "Then use the keys below"],
   ["← → ↑ ↓", "Rotate the view"],
   ["+ and −", "Zoom in and out"],
-  ["Home", "Back to the overview"],
+  ["Home", "Back to the chapter's first view"],
 ];
 
 function Keys() {
   const shortcuts = useLab((s) => s.settings.shortcuts);
   const updateSettings = useLab((s) => s.updateSettings);
   return (
-    <div className="space-y-4">
-      <label className="flex items-start gap-3 rounded-md border border-line-strong bg-navy-raised p-3">
+    <div className="space-y-5">
+      <label className="flex cursor-pointer items-start gap-3 rounded-[14px] border border-rule-strong p-3.5">
         <input
           type="checkbox"
           checked={shortcuts}
           onChange={(e) => updateSettings({ shortcuts: e.target.checked })}
-          className="mt-1 h-4 w-4 accent-amber"
+          className="mt-1 h-4 w-4 accent-[#9dbef0]"
         />
         <span>
-          <span className="block text-sm font-semibold">Single-key shortcuts</span>
-          <span className="block text-xs text-paper-3">
+          <span className="block font-display text-sm font-semibold text-ink">Single-key shortcuts</span>
+          <span className="block text-xs text-muted">
             When off, use Alt+Shift with the same key (for example Alt+Shift+M). Reset all is always Alt+Shift+Backspace. Shortcuts
             never fire while you are typing or using a control.
           </span>
         </span>
       </label>
-      <ShortcutTable rows={KEYS} caption="Simulation" />
+      <ShortcutTable rows={KEYS} caption="Lab" />
       <ShortcutTable rows={CAMERA_KEYS} caption="Camera" />
     </div>
   );
@@ -155,18 +196,44 @@ function Keys() {
 function ShortcutTable({ rows, caption }: { rows: [string, string][]; caption: string }) {
   return (
     <table className="w-full text-sm">
-      <caption className="pb-1 text-start font-mono text-xs font-semibold uppercase tracking-[0.1em] text-paper-2">{caption}</caption>
+      <caption className="kicker pb-2 text-start">{caption}</caption>
       <tbody>
         {rows.map(([k, d]) => (
-          <tr key={k} className="border-t border-line">
-            <th scope="row" className="w-44 py-1.5 pe-3 text-start font-mono text-sm font-medium text-amber">
+          <tr key={k} className="border-t border-rule">
+            <th scope="row" className="w-48 py-2 pe-3 text-start font-mono text-[0.8125rem] font-semibold text-ink">
               {k}
             </th>
-            <td className="py-1.5 text-paper-2">{d}</td>
+            <td className="py-2 text-body">{d}</td>
           </tr>
         ))}
       </tbody>
     </table>
+  );
+}
+
+function Choice<T extends string | number>({
+  name,
+  value,
+  current,
+  onChange,
+  children,
+}: {
+  name: string;
+  value: T;
+  current: T;
+  onChange: (value: T) => void;
+  children: React.ReactNode;
+}) {
+  const on = value === current;
+  return (
+    <label
+      className={`inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-full border px-3.5 font-display text-[0.8125rem] font-semibold transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ice ${
+        on ? "border-white bg-white text-page" : "border-rule-strong text-ink hover:border-white"
+      }`}
+    >
+      <input type="radio" name={name} checked={on} onChange={() => onChange(value)} className="sr-only" />
+      {children}
+    </label>
   );
 }
 
@@ -177,16 +244,16 @@ function SettingsForm() {
   const setQuality = useLab((s) => s.setQuality);
 
   const toggle = (key: keyof Settings, label: string, hint: string) => (
-    <label className="flex items-start gap-3 py-2">
+    <label className="flex cursor-pointer items-start gap-3 py-2.5">
       <input
         type="checkbox"
         checked={settings[key] as boolean}
         onChange={(e) => update({ [key]: e.target.checked } as Partial<Settings>)}
-        className="mt-1 h-4 w-4 accent-amber"
+        className="mt-1 h-4 w-4 shrink-0 accent-[#9dbef0]"
       />
       <span>
-        <span className="block text-sm font-semibold">{label}</span>
-        <span className="block text-xs text-paper-3">{hint}</span>
+        <span className="block font-display text-sm font-semibold text-ink">{label}</span>
+        <span className="block text-xs text-muted">{hint}</span>
       </span>
     </label>
   );
@@ -194,34 +261,30 @@ function SettingsForm() {
   const probe = probeGraphics();
   const options: [QualityMode, string][] = [
     ["auto", "Automatic"],
-    ["high", "Full · graphics card"],
-    ["low", "Light · built-in graphics"],
-    ["cpu", "Minimal · no graphics card"],
+    ["high", "Full"],
+    ["low", "Light"],
+    ["cpu", "Minimal"],
   ];
 
   return (
-    <div className="divide-y divide-line">
-      <fieldset className="pb-3">
-        <legend className="pb-1 text-sm font-semibold">Graphics quality</legend>
+    <div className="divide-y divide-rule">
+      <fieldset className="pb-4">
+        <legend className="pb-2 font-display text-sm font-semibold text-ink">Graphics</legend>
         <div className="flex flex-wrap gap-2">
           {options.map(([q, label]) => (
-            <label
-              key={q}
-              className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-md border border-line-strong px-3 text-sm"
-            >
-              <input type="radio" name="quality" checked={settings.quality === q} onChange={() => setQuality(q)} className="accent-amber" />
+            <Choice key={q} name="quality" value={q} current={settings.quality} onChange={setQuality}>
               {label}
-            </label>
+            </Choice>
           ))}
         </div>
-        <p className="mt-1 text-xs text-paper-3">
-          Now using: {TIERS[tier].label}. This computer: {graphicsName(probe)}. Minimal suits laptops without a graphics card or
-          with graphics acceleration switched off: it draws at a lower resolution and a steady 30 frames per second.
+        <p className="mt-2 text-xs leading-relaxed text-muted">
+          Now drawing with: <span className="text-body">{TIERS[tier].label}</span>. This computer: {graphicsName(probe)}. Full suits a
+          graphics card; Light suits built-in graphics such as Intel UHD; Minimal suits laptops with graphics acceleration switched off,
+          drawing at a lower resolution and a steady 30 frames per second.
         </p>
       </fieldset>
-      <div className="py-1">
-        {toggle("glow", "Glow effect", "Soft glow around bright objects. Turning it off helps very slow computers.")}
-        {toggle("crt", "Retro scanlines", "The monitor-style lines over the 3D view. Not drawn in Minimal graphics, where they would slow the view.")}
+      <div className="py-2">
+        {toggle("glow", "Glow", "Soft glow around bright objects (Full graphics only). Turning it off helps slow computers.")}
         {toggle("labels", "Labels in the 3D view", "Names pinned to the objects in the scene.")}
         {toggle("reduceMotion", "Reduce motion", "No camera flights or decorative movement. Also follows your system setting.")}
         {toggle(
@@ -229,24 +292,15 @@ function SettingsForm() {
           "Single-key shortcuts",
           "Space, M, P… When off, use Alt+Shift with the same key. Reset all is always Alt+Shift+Backspace.",
         )}
+        {toggle("crt", "Retro scanlines", "Monitor-style lines over the 3D view. Not drawn in Minimal graphics, where they would slow the view.")}
       </div>
-      <fieldset className="pt-3">
-        <legend className="pb-1 text-sm font-semibold">Text size</legend>
+      <fieldset className="pt-4">
+        <legend className="pb-2 font-display text-sm font-semibold text-ink">Text size</legend>
         <div className="flex flex-wrap gap-2">
           {([1, 1.25, 1.5] as const).map((t) => (
-            <label
-              key={t}
-              className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-md border border-line-strong px-3 text-sm"
-            >
-              <input
-                type="radio"
-                name="text-size"
-                checked={settings.textSize === t}
-                onChange={() => update({ textSize: t })}
-                className="accent-amber"
-              />
+            <Choice key={t} name="text-size" value={t} current={settings.textSize} onChange={(v) => update({ textSize: v })}>
               {Math.round(t * 100)}%
-            </label>
+            </Choice>
           ))}
         </div>
       </fieldset>

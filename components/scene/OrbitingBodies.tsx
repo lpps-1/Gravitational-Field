@@ -60,6 +60,7 @@ export function OrbitingBodies() {
   const group = useRef<THREE.Group>(null);
 
   useFrame(() => {
+    if (sim.stage !== "lab") return; // hidden while another stage is shown
     if (group.current) group.current.visible = sim.expand < 0.02;
   });
 
@@ -161,6 +162,7 @@ function Body({ orbit }: { orbit: Orbit }) {
   }, [resets]);
 
   useFrame(() => {
+    if (sim.stage !== "lab") return; // hidden while another stage is shown
     const m = mesh.current;
     if (!m) return;
     const dt = sim.dt;

@@ -102,3 +102,25 @@ export const LabelIcon = ({ className }: IconProps) =>
     </>,
     className,
   );
+export const MenuIcon = ({ className }: IconProps) => base(<path d="M4 7h16M4 12h16M4 17h16" />, className);
+export const ArrowRightIcon = ({ className }: IconProps) => base(<path d="M5 12h14M13 6l6 6-6 6" />, className);
+export const ChevronLeftIcon = ({ className }: IconProps) => base(<path d="M15 6l-6 6 6 6" />, className);
+export const ChevronRightIcon = ({ className }: IconProps) => base(<path d="M9 6l6 6-6 6" />, className);
+export const CheckIcon = ({ className }: IconProps) => base(<path d="M5 12.5l4.5 4.5L19 7.5" />, className);
+export const InfoIcon = ({ className }: IconProps) =>
+  base(
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 11v5.5" />
+      <circle cx="12" cy="7.6" r="0.6" fill="currentColor" />
+    </>,
+    className,
+  );
+export const EyeIcon = ({ className }: IconProps) =>
+  base(
+    <>
+      <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" />
+      <circle cx="12" cy="12" r="3" />
+    </>,
+    className,
+  );

@@ -22,21 +22,19 @@ export function MirajCaption({ compact = false }: { compact?: boolean }) {
 
   if (!miraj) {
     return (
-      <div className="pointer-events-auto rounded-lg border border-line bg-navy-deep/95 px-4 py-2 text-sm text-paper-2 shadow-xl">
-        Unfolding: back to the gravity well…
-      </div>
+      <div className="glass pointer-events-auto rounded-full px-4 py-2 text-sm text-body">Unfolding: back to the gravity well…</div>
     );
   }
 
   const current = MIRAJ_STEPS[step];
   return (
-    <div className="pointer-events-auto w-full max-w-[36rem] rounded-lg border border-violet/60 bg-navy-deep/95 px-4 py-3 shadow-xl">
+    <div className="glass pointer-events-auto w-full max-w-[36rem] rounded-[22px] px-5 py-3.5">
       <ol className="mb-1.5 flex gap-1.5" aria-label="Miraj steps">
         {MIRAJ_STEPS.map((s, i) => (
           <li
             key={s.title}
             aria-current={i === step ? "step" : undefined}
-            className={`h-1.5 flex-1 rounded-full ${i < step ? "bg-violet" : i === step ? "bg-violet-text" : "bg-line"}`}
+            className={`h-1 flex-1 rounded-full ${i < step ? "bg-violet" : i === step ? "bg-violet-text" : "bg-white/16"}`}
           >
             <span className="sr-only">
               Step {i + 1}: {s.title}
@@ -45,23 +43,21 @@ export function MirajCaption({ compact = false }: { compact?: boolean }) {
           </li>
         ))}
       </ol>
-      <p className="text-base font-semibold text-paper">
-        <span className="font-mono text-xs font-medium uppercase tracking-[0.1em] text-violet-text">Step {step + 1} of 4 · </span>
-        {current.title}
-      </p>
-      <p className="text-sm text-paper-2">{current.detail}</p>
+      <p className="kicker text-violet-text">Step {step + 1} of 4</p>
+      <p className="mt-1 font-display text-base font-bold text-ink">{current.title}</p>
+      <p className="text-sm text-body">{current.detail}</p>
       {step === 3 && <RouteComparison />}
       {/* On phones the same caveat is in the Seven skies explanation; the caption keeps to the step. */}
-      {!compact && <p className="mt-1 text-xs text-paper-3">{MIRAJ_FOOTNOTE}</p>}
+      {!compact && <p className="mt-1.5 text-xs text-muted">{MIRAJ_FOOTNOTE}</p>}
     </div>
   );
 }
 
 export function RouteComparison() {
   return (
-    <p className="mt-1 text-sm text-paper">
+    <p className="mt-1 text-sm text-body">
       Through the tunnel: <strong className="text-violet-text">{Math.round(ROUTE_THROUGH_TUNNEL)} units</strong> · across all seven skies:{" "}
-      <strong className="text-paper">{ROUTE_ACROSS_SKIES} units</strong> ·{" "}
+      <strong className="text-ink">{ROUTE_ACROSS_SKIES} units</strong> ·{" "}
       <strong className="text-amber">{Math.round(ROUTE_ACROSS_SKIES / ROUTE_THROUGH_TUNNEL)}× shorter</strong>
     </p>
   );

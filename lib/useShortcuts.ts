@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { CHAPTER_ORDER } from "./chapters";
 import { TOUR } from "./tour";
 import { useLab } from "./store";
 
@@ -11,6 +12,7 @@ import { useLab } from "./store";
  * can be switched off in Settings. Alt+Shift+<the same key> always works, as
  * in PhET simulations; Reset all is only Alt+Shift+Backspace.
  * Page Down / Page Up step through the tour, so presentation clickers work.
+ * 1 to 6 open the chapters.
  */
 const CONTROLS =
   'input,textarea,select,button,a[href],summary,[role=tab],[role=switch],[role=radio],[role=slider],[contenteditable="true"]';
@@ -39,8 +41,8 @@ export function useShortcuts() {
       if (e.altKey && !chord) return;
       const free = !(target instanceof Element) || !target.closest(CONTROLS);
       if (!chord && (!lab.settings.shortcuts || !free)) return;
-      // The explanation panel keeps Space for scrolling.
-      if (!chord && e.key === " " && target instanceof Element && target.closest("[role=tabpanel]")) return;
+      // The chapter notes keep Space for scrolling.
+      if (!chord && e.key === " " && target instanceof Element && target.closest("[data-notes-scroll]")) return;
 
       // With Alt+Shift, e.key can be a different character, so use the physical key.
       const key = chord ? codeToKey(e.code) : e.key.toLowerCase();
@@ -98,6 +100,14 @@ export function useShortcuts() {
         case "?":
         case "/":
           if (once) lab.openDialog("keys");
+          break;
+        case "1":
+        case "2":
+        case "3":
+        case "4":
+        case "5":
+        case "6":
+          if (once) lab.goToChapter(CHAPTER_ORDER[Number(key) - 1]);
           break;
         default:
           handled = false;

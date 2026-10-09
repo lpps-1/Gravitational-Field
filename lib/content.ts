@@ -25,7 +25,15 @@ export type LegendSwatch =
   | "clockA"
   | "clockB"
   | "skies"
-  | "tunnelLight";
+  | "tunnelLight"
+  | "sun"
+  | "planet"
+  | "planetOrbit"
+  | "belt"
+  | "shadow"
+  | "photonRing"
+  | "disk"
+  | "arc";
 
 export interface ModuleContent {
   /** Short tab name. */
@@ -122,6 +130,62 @@ export const MODULES: Record<ModuleId, ModuleContent> = {
       { swatch: "clockB", text: "Amber diamond B: a clock deep in the well." },
     ],
   },
+  S: {
+    tab: "Solar System",
+    title: "Our Solar System, today",
+    summary: "The Sun's mass curves spacetime, and the planets follow that curve. Each one is drawn where it really is today.",
+    physics: [
+      "The Sun holds 99.86% of the Solar System's mass. The curve it puts in spacetime keeps eight planets on their orbits: Mercury goes round in 88 days, Neptune in 165 years. The positions shown are calculated for today's date from NASA JPL orbital elements.",
+      "Einstein's first test: Mercury's orbit slowly turns, 43 arcseconds per century more than Newton's gravity allows. In 1915 General Relativity accounted for exactly that.",
+      "Gravity slows clocks here too. A clock on the Sun's surface loses about 67 seconds a year compared with one in deep space; on Earth's surface, Earth's own gravity costs about 0.02 seconds a year.",
+    ],
+    tryIt: [
+      "Choose a planet to follow it and read its facts.",
+      "Speed up the clock: the inner planets lap the outer ones.",
+      "Press “Back to today” to put every planet where it is right now.",
+    ],
+    verse: {
+      arabic: "وَهُوَ الَّذِي خَلَقَ اللَّيْلَ وَالنَّهَارَ وَالشَّمْسَ وَالْقَمَرَ ۖ كُلٌّ فِي فَلَكٍ يَسْبَحُونَ",
+      translation: "“And it is He who created the night and the day and the sun and the moon; all [heavenly bodies] in an orbit are swimming.”",
+      reference: "Al-Anbiyāʾ 21:33",
+    },
+    scale:
+      "Not to scale: sizes are enlarged and distances compressed so that all eight planets fit on screen. Positions, orbits, tilts and periods are real.",
+    legend: [
+      { swatch: "sun", text: "The Sun, at the centre." },
+      { swatch: "planet", text: "The eight planets, with their real surfaces and tilts." },
+      { swatch: "planetOrbit", text: "Thin rings: each planet's real orbit." },
+      { swatch: "belt", text: "Dust between Mars and Jupiter: the asteroid belt." },
+    ],
+  },
+  H: {
+    tab: "Black hole",
+    title: "Three clocks: deep space, the Sun, a black hole",
+    summary: "The deeper a clock sits in gravity, the slower it ticks. A black hole is the deepest gravity there is.",
+    physics: [
+      "A clock's rate depends on how deep it sits in gravity: dτ/dt = √(1 − rₛ/r), where rₛ is the horizon radius. In deep space the rate is 1. On the Sun's surface it is 0.999 997 9, so that clock loses about 67 seconds a year. Hovering at 1.5 horizon radii from a black hole the rate is 0.58: one hour there passes while 1 hour 44 minutes pass in deep space.",
+      "A black hole is matter squeezed inside its horizon radius: for the Sun's mass that radius is only 2.95 km. Light passing close is bent round it, so the hot disk of gas behind the hole appears above and below it, and the side of the disk turning towards us looks brighter. The black disc in the middle is the hole's shadow, about 2.6 times the horizon radius.",
+      "The Event Horizon Telescope photographed the shadows of the black holes in the galaxy M87 (2019) and at the centre of our own galaxy, Sagittarius A* (2022).",
+    ],
+    tryIt: [
+      "Move your clock closer to the horizon and watch it fall behind.",
+      "Turn on the time-lapse: a year passes every ten seconds.",
+      "Drag to look from above: the image of the disk wraps round the hole.",
+    ],
+    verse: {
+      arabic: "تَعْرُجُ الْمَلَائِكَةُ وَالرُّوحُ إِلَيْهِ فِي يَوْمٍ كَانَ مِقْدَارُهُ خَمْسِينَ أَلْفَ سَنَةٍ",
+      translation: "“The angels and the Spirit will ascend to Him during a Day the extent of which is fifty thousand years.”",
+      reference: "Al-Maʿārij 70:4",
+    },
+    scale:
+      "Drawn with real light-bending (Schwarzschild geodesics). How big a black hole is depends on its mass; the clock rates depend only on distance measured in horizon radii.",
+    legend: [
+      { swatch: "shadow", text: "Black disc: the shadow, where light falls in." },
+      { swatch: "photonRing", text: "Thin bright ring: light that circled the hole." },
+      { swatch: "disk", text: "Glowing disk: hot gas; the side coming towards us is brighter." },
+      { swatch: "arc", text: "Arc over the top: the far side of the disk, its light bent over the hole." },
+    ],
+  },
   D: {
     tab: "Seven skies",
     title: "The Seven Skies · Miraj",
@@ -131,7 +195,7 @@ export const MODULES: Record<ModuleId, ModuleContent> = {
       "No wormhole has ever been observed, and an Einstein–Rosen bridge would pinch shut before even light could cross. Here the fold is a visual analogy for reflection on the Isrāʾ and Miʿrāj, not a scientific account of it.",
     ],
     tryIt: [
-      "Engage the Miraj and follow the four steps shown at the top of the view.",
+      "Follow the four steps shown at the top of the view. Switch the Miraj off and on to watch them again.",
       "Press “Send light through the tunnel” (Space) to send more light; use Slow motion to follow it.",
       "Choose the view “Up the tunnel” to look straight up the throat.",
     ],
@@ -182,4 +246,18 @@ export const SCENE_LABELS: Record<string, string> = {
   "lens-guide": "Path with no mass",
   "lens-hit": "Light fell into the mass",
   tunnel: "Tunnel through all seven skies",
+  // Solar System stage (ids starting "solar:" show only on that stage).
+  "solar:sun": "Sun",
+  "solar:mercury": "Mercury",
+  "solar:venus": "Venus",
+  "solar:earth": "Earth",
+  "solar:mars": "Mars",
+  "solar:jupiter": "Jupiter",
+  "solar:saturn": "Saturn",
+  "solar:uranus": "Uranus",
+  "solar:neptune": "Neptune",
+  // Black hole stage (ids starting "bh:").
+  "bh:shadow": "Shadow",
+  "bh:lensed": "Far side of the disk",
+  "bh:approaching": "Gas coming towards us: brighter",
 };

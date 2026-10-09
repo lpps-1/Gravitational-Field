@@ -23,6 +23,7 @@ export function TimeClocks() {
   const beaconB = useRef<THREE.Group>(null);
 
   useFrame(() => {
+    if (sim.stage !== "lab") return; // hidden while another stage is shown
     // Hidden on the Bending light tab too, where a cyan diamond is the lensing observer.
     const visible = sim.expand < 0.02 && useLab.getState().focus !== "B";
     if (group.current) group.current.visible = visible;

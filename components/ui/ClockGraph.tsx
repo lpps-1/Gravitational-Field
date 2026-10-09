@@ -112,7 +112,7 @@ export function ClockGraph() {
 
   return (
     <figure className="mt-2">
-      <figcaption className="mb-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-paper-2">
+      <figcaption className="mb-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-body">
         <span className="inline-flex items-center gap-1.5">
           <span aria-hidden className="inline-block h-0.5 w-4 rounded bg-series-a" /> Clock A (far away)
         </span>
@@ -125,15 +125,15 @@ export function ClockGraph() {
           <g ref={yTicks} aria-hidden>
             {[0, 1, 2].map((k) => (
               <g key={k}>
-                <line x1={M.left} x2={M.left + PW} stroke="#3a5a92" strokeOpacity={0.5} strokeWidth={1} />
-                <text x={M.left - 6} dy="0.32em" textAnchor="end" fontSize={12} fill="#b5b1a8">
+                <line x1={M.left} x2={M.left + PW} stroke="#ffffff" strokeOpacity={0.12} strokeWidth={1} />
+                <text x={M.left - 6} dy="0.32em" textAnchor="end" fontSize={12} fill="#a3a9b4">
                   0
                 </text>
               </g>
             ))}
           </g>
-          <line x1={M.left} x2={M.left + PW} y1={M.top + PH} y2={M.top + PH} stroke="#7f97c4" strokeWidth={1} />
-          <g ref={xLabels} aria-hidden fontSize={12} fill="#b5b1a8">
+          <line x1={M.left} x2={M.left + PW} y1={M.top + PH} y2={M.top + PH} stroke="#ffffff" strokeOpacity={0.4} strokeWidth={1} />
+          <g ref={xLabels} aria-hidden fontSize={12} fill="#a3a9b4">
             <text x={M.left} y={H - 16}>
               0 s
             </text>
@@ -141,31 +141,31 @@ export function ClockGraph() {
               0 s
             </text>
           </g>
-          <text x={M.left + PW / 2} y={H - 2} textAnchor="middle" fontSize={12} fill="#d3cec3">
+          <text x={M.left + PW / 2} y={H - 2} textAnchor="middle" fontSize={12} fill="#c3c8d1">
             Time on Clock A →
           </text>
-          <text transform={`translate(11,${M.top + PH / 2}) rotate(-90)`} textAnchor="middle" fontSize={12} fill="#d3cec3">
+          <text transform={`translate(11,${M.top + PH / 2}) rotate(-90)`} textAnchor="middle" fontSize={12} fill="#c3c8d1">
             Reading (s)
           </text>
-          <text ref={empty} x={M.left + PW / 2} y={M.top + PH / 2} textAnchor="middle" fontSize={12} fill="#b5b1a8">
+          <text ref={empty} x={M.left + PW / 2} y={M.top + PH / 2} textAnchor="middle" fontSize={12} fill="#a3a9b4">
             Collecting readings…
           </text>
           <polyline ref={lineA} fill="none" stroke="var(--color-series-a)" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
           <polyline ref={lineB} fill="none" stroke="var(--color-series-b)" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
           <g ref={endA} aria-hidden>
-            <circle r={4} fill="var(--color-series-a)" stroke="#12244a" strokeWidth={2} />
-            <text x={7} dy="0.32em" fontSize={12} fontWeight={600} fill="#ede8dc">
+            <circle r={4} fill="var(--color-series-a)" stroke="#0e2347" strokeWidth={2} />
+            <text x={7} dy="0.32em" fontSize={12} fontWeight={600} fill="#ffffff">
               A
             </text>
           </g>
           <g ref={endB} aria-hidden>
-            <circle r={4} fill="var(--color-series-b)" stroke="#12244a" strokeWidth={2} />
-            <text x={7} dy="0.32em" fontSize={12} fontWeight={600} fill="#ede8dc">
+            <circle r={4} fill="var(--color-series-b)" stroke="#0e2347" strokeWidth={2} />
+            <text x={7} dy="0.32em" fontSize={12} fontWeight={600} fill="#ffffff">
               B
             </text>
           </g>
           {hover && (
-            <line x1={hover.x} x2={hover.x} y1={M.top} y2={M.top + PH} stroke="#ede8dc" strokeOpacity={0.6} strokeDasharray="3 3" />
+            <line x1={hover.x} x2={hover.x} y1={M.top} y2={M.top + PH} stroke="#ffffff" strokeOpacity={0.6} strokeDasharray="3 3" />
           )}
           <rect
             x={M.left}
@@ -180,7 +180,7 @@ export function ClockGraph() {
         </svg>
         {hover && (
           <div
-            className="pointer-events-none absolute top-1 rounded border border-line-strong bg-navy-deep px-2 py-1 text-xs text-paper shadow-lg"
+            className="pointer-events-none absolute top-1 rounded-[10px] border border-rule-strong bg-page px-2 py-1 text-xs text-ink shadow-lg"
             style={{ left: `${(hover.x / W) * 100}%`, transform: hover.x > W / 2 ? "translateX(calc(-100% - 8px))" : "translateX(8px)" }}
           >
             <div>
@@ -189,7 +189,7 @@ export function ClockGraph() {
             <div>
               B: <span className="tabular-nums">{hover.b.toFixed(1)} s</span>
             </div>
-            <div className="text-paper-3">B behind by {(hover.a - hover.b).toFixed(1)} s</div>
+            <div className="text-muted">B behind by {(hover.a - hover.b).toFixed(1)} s</div>
           </div>
         )}
       </div>

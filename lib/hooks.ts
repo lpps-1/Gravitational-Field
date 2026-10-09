@@ -68,7 +68,7 @@ export function prefersReducedMotion(): boolean {
 /* Layout                                                                     */
 /* ------------------------------------------------------------------------ */
 
-/** Desktop layout (side console) vs. compact layout (bottom sheet). */
+/** Desktop layout (notes beside the view) vs. compact layout (notes in a bottom sheet). */
 const WIDE_QUERY = "(min-width: 1024px) and (min-aspect-ratio: 1/1)";
 
 export function useWideLayout(): boolean {
@@ -87,5 +87,5 @@ export function isWideLayout(): boolean {
   return window.matchMedia(WIDE_QUERY).matches;
 }
 
-/** Console width on wide layouts (px; fixed, so a large text size does not squeeze the 3D view). */
-export const CONSOLE_WIDTH = 380;
+/** Width of the chapter notes on wide layouts (px; fixed, so a large text size does not squeeze the 3D view). */
+export const PANEL_WIDTH = 344;

@@ -16,6 +16,7 @@ export function CentralMass() {
   const pulse = useRef(0);
 
   useFrame(() => {
+    if (sim.stage !== "lab") return; // hidden while another stage is shown
     const g = group.current;
     if (!g) return;
     const visible = sim.m > ORBIT_RELEASE_MASS && sim.expand < 0.02;

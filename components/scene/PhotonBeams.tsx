@@ -105,6 +105,7 @@ export function PhotonBeams() {
   }, [resets, pool]);
 
   useFrame(({ camera }, raw) => {
+    if (sim.stage !== "lab") return; // hidden while another stage is shown
     const { mass, miraj } = useLab.getState();
     // The Miraj takes over the view: light on the grid is dropped, without a result.
     const away = miraj || sim.expand >= 0.02;

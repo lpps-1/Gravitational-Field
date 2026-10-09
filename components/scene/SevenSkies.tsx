@@ -60,6 +60,7 @@ export function SevenSkies() {
   );
 
   useFrame(() => {
+    if (sim.stage !== "lab") return; // hidden while another stage is shown
     const { expand, fold } = sim;
     const visible = expand > 0.001;
     if (lines.current) lines.current.visible = visible;
@@ -128,6 +129,7 @@ function Traveler() {
   }, [resets]);
 
   useFrame(() => {
+    if (sim.stage !== "lab") return; // hidden while another stage is shown
     const st = state.current;
     const dt = sim.dt;
     const open = sim.fold >= 1;

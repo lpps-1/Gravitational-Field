@@ -2,7 +2,11 @@
 
 import { useEffect, useRef } from "react";
 import { formatClock, formatRate } from "@/lib/format";
-import { sim } from "@/lib/store";
+import type { Tier } from "@/lib/quality";
+import { sim, useLab } from "@/lib/store";
+
+/** Milliseconds between updates of the dials, per graphics tier. */
+const UPDATE_MS: Record<Tier, number> = { high: 0, low: 30, cpu: 100 };
 
 /**
  * Two analog clocks side by side (top of the 3D view while the Time tab is
@@ -21,9 +25,14 @@ export function ClockStrip({ compact = false }: { compact?: boolean }) {
 
   useEffect(() => {
     let raf = 0;
+    let prev = 0;
     const last = { a: "", b: "", rate: "", lag: "" };
-    const loop = () => {
+    const loop = (now: number) => {
       raf = requestAnimationFrame(loop);
+      // Without a graphics card every repaint over the 3D view is costly: a few updates a second
+      // keep the hands moving (a real second hand ticks once a second) without slowing the view.
+      if (now - prev < UPDATE_MS[useLab.getState().tier]) return;
+      prev = now;
       handA.current?.setAttribute("transform", `rotate(${((sim.clockA % 60) * 6).toFixed(2)})`);
       handB.current?.setAttribute("transform", `rotate(${((sim.clockB % 60) * 6).toFixed(2)})`);
       const a = formatClock(sim.clockA);
@@ -35,33 +44,33 @@ export function ClockStrip({ compact = false }: { compact?: boolean }) {
       if (r !== last.rate && rateB.current) rateB.current.textContent = last.rate = r;
       if (l !== last.lag && lag.current) lag.current.textContent = last.lag = l;
     };
-    loop();
+    loop(performance.now());
     return () => cancelAnimationFrame(raf);
   }, [compact]); // the two layouts use new elements, so start writing afresh
 
-  const size = compact ? 48 : 76;
+  const size = compact ? 44 : 64;
   const dialA = (
     <Dial size={size} hand={handA} color="var(--color-phosphor)" title="Clock A" subtitle="far away" compact={compact}>
-      <span ref={timeA} className="font-digital text-2xl leading-none text-paper">
+      <span ref={timeA} className="font-mono text-lg leading-none font-semibold text-ink tabular-nums">
         00:00.0
       </span>
-      <span className="text-xs text-paper-3">100% speed</span>
+      <span className="text-xs text-muted">100% speed</span>
     </Dial>
   );
   const dialB = (
     <Dial size={size} hand={handB} color="var(--color-amber)" title="Clock B" subtitle="near the mass" compact={compact}>
-      <span ref={timeB} className="font-digital text-2xl leading-none text-paper">
+      <span ref={timeB} className="font-mono text-lg leading-none font-semibold text-ink tabular-nums">
         00:00.0
       </span>
-      <span ref={rateB} className="text-xs text-paper-3">
+      <span ref={rateB} className="text-xs text-muted">
         100% speed
       </span>
     </Dial>
   );
   const behind = (
     <div className={compact ? "flex items-baseline justify-center gap-2" : "flex flex-col items-center justify-center px-1 text-center"}>
-      <span className="text-xs text-paper-3">B is behind by</span>
-      <span ref={lag} className={`font-digital leading-none text-amber ${compact ? "text-2xl" : "text-3xl"}`}>
+      <span className="text-xs text-muted">B is behind by</span>
+      <span ref={lag} className={`font-mono leading-none font-semibold text-amber tabular-nums ${compact ? "text-lg" : "text-2xl"}`}>
         0.0 s
       </span>
     </div>
@@ -70,9 +79,7 @@ export function ClockStrip({ compact = false }: { compact?: boolean }) {
     <div
       role="group"
       aria-label="Clock comparison"
-      className={`pointer-events-auto flex max-w-full rounded-lg border border-line bg-navy-deep/95 px-3 shadow-xl ${
-        compact ? "flex-col gap-1 py-1.5" : "items-stretch gap-3 py-2"
-      }`}
+      className={`glass pointer-events-auto flex max-w-full rounded-[22px] px-4 ${compact ? "flex-col gap-1 py-2" : "items-stretch gap-4 py-2.5"}`}
     >
       {compact ? (
         <>
@@ -114,13 +121,13 @@ function Dial({
   return (
     <div className={compact ? "flex flex-col items-center gap-1 text-center" : "flex items-center gap-2"}>
       <svg width={size} height={size} viewBox="-40 -40 80 80" aria-hidden>
-        <circle r={37} fill="#0e1c3a" stroke="#7f97c4" strokeWidth={2} />
+        <circle r={37} fill="#0b1f40" stroke="rgb(255 255 255 / 0.4)" strokeWidth={1.5} />
         {Array.from({ length: 12 }, (_, i) => (
           <line
             key={i}
             y1={-33}
             y2={i % 3 === 0 ? -26 : -29}
-            stroke="#d3cec3"
+            stroke="#c3c8d1"
             strokeWidth={i % 3 === 0 ? 2.5 : 1.5}
             transform={`rotate(${i * 30})`}
           />
@@ -129,9 +136,9 @@ function Dial({
         <circle r={3.5} fill={color} />
       </svg>
       <div className={`flex flex-col gap-0.5 ${compact ? "items-center" : ""}`}>
-        <span className="text-xs font-semibold text-paper">
+        <span className="font-display text-xs font-semibold text-ink">
           {title}{" "}
-          {compact ? <span className="block font-normal text-paper-3">{subtitle}</span> : <span className="font-normal text-paper-3">· {subtitle}</span>}
+          {compact ? <span className="block font-sans font-normal text-muted">{subtitle}</span> : <span className="font-sans font-normal text-muted">· {subtitle}</span>}
         </span>
         {children}
       </div>

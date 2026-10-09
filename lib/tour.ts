@@ -110,6 +110,57 @@ export const TOUR: TourStep[] = [
     },
   },
   {
+    title: "Our Solar System, today",
+    body: "Now the real thing. The Sun's mass curves spacetime, and eight planets follow that curve. Each one is drawn where it really is today, from NASA's orbital data.",
+    look: "The clock runs at one week per second: Mercury goes round the Sun in about 13 seconds, Neptune hardly moves.",
+    verse: "“…all [heavenly bodies] in an orbit are swimming” (Al-Anbiyāʾ 21:33).",
+    module: "S",
+    view: "solar",
+    enter: (lab) => {
+      lab.setMiraj(false);
+      lab.setSolarSpeed(7);
+      lab.setSolarFocus(null);
+      lab.resetSolar();
+    },
+  },
+  {
+    title: "Home",
+    body: "Follow the Earth. On its surface, Earth's own gravity slows clocks by about 0.02 seconds a year. On the Sun's surface the loss is about 67 seconds a year.",
+    look: "Earth's facts are in the panel. Choose another planet to compare.",
+    module: "S",
+    enter: (lab) => {
+      lab.setMiraj(false);
+      lab.setSolarFocus("earth");
+    },
+  },
+  {
+    title: "A black hole",
+    body: "Squeeze a mass small enough and not even light can escape: a black hole. It bends light so strongly that the hot disk of gas behind it appears above and below its black shadow.",
+    look: "The side of the disk turning towards us is brighter. Drag to look around it.",
+    module: "H",
+    view: "bh",
+    enter: (lab) => {
+      lab.setMiraj(false);
+      lab.setBhRadius(1.5);
+      lab.setBhTimelapse(false);
+      lab.resetBhClocks();
+    },
+  },
+  {
+    title: "Three clocks",
+    body: "One clock in deep space, one on the Sun's surface, and yours, hovering at 1.5 horizon radii from the hole. The time-lapse runs a year every ten seconds.",
+    look: "In a year the Sun's clock falls 67 seconds behind; yours falls about five months behind.",
+    verse: "“…a Day the extent of which is fifty thousand years” (Al-Maʿārij 70:4).",
+    module: "H",
+    view: "bh",
+    enter: (lab) => {
+      lab.setMiraj(false);
+      lab.setBhRadius(1.5);
+      lab.setBhTimelapse(true);
+      lab.resetBhClocks();
+    },
+  },
+  {
     title: "The seven skies",
     body: "Now the scene becomes seven skies, one above another. Follow the four steps shown at the top of the view.",
     verse: "“…who created seven heavens in layers” (Al-Mulk 67:3).",
@@ -132,12 +183,13 @@ export const TOUR: TourStep[] = [
   },
   {
     title: "Explore on your own",
-    body: "That's the tour. Change the mass, aim the light, compare the clocks, or engage the Miraj again. Reset all puts everything back.",
+    body: "That's the tour. Pick any chapter at the top: change the mass, aim the light, follow a planet, move your clock near the black hole, or engage the Miraj again. Reset all puts everything back.",
     module: "A",
     view: "overview",
     enter: (lab) => {
       lab.setMiraj(false);
       lab.setMass(DEFAULT_MASS);
+      lab.setBhTimelapse(false);
     },
   },
 ];

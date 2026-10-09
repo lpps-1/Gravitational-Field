@@ -26,6 +26,11 @@ export interface Anchor {
 
 export const anchors = new Map<string, Anchor>();
 
+/** The stage an anchor belongs to, from its id: "solar:…" and "bh:…" ids; everything else is the lab. */
+export function anchorStage(id: string): "lab" | "solar" | "blackhole" {
+  return id.startsWith("solar:") ? "solar" : id.startsWith("bh:") ? "blackhole" : "lab";
+}
+
 export function getAnchor(id: string): Anchor {
   let a = anchors.get(id);
   if (!a) {
@@ -46,7 +51,15 @@ export function getAnchor(id: string): Anchor {
 }
 
 /**
- * The part of the window not covered by the console (CSS px). Labels whose
- * anchor falls outside it are hidden rather than drawn under the panels.
+ * The part of the window not covered by the navigation, the notes or the
+ * dock (CSS px). Labels whose anchor falls outside it are hidden rather than
+ * drawn under the panels, and so are labels that would run under the caption
+ * at the top of the view (`avoid`; empty when right ≤ left).
  */
-export const stageRect = { left: 0, top: 0, right: Infinity, bottom: Infinity };
+export const stageRect = {
+  left: 0,
+  top: 0,
+  right: Infinity,
+  bottom: Infinity,
+  avoid: { left: 0, top: 0, right: 0, bottom: 0 },
+};

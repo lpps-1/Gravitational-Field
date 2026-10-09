@@ -3,6 +3,7 @@
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useRef } from "react";
 import { MIRAJ_EXPAND_SECONDS, MIRAJ_FOLD_SECONDS, MIRAJ_HOLD_SECONDS, MIRAJ_TOTAL_SECONDS, dilationFactor } from "@/lib/physics";
+import { stageOf } from "@/lib/chapters";
 import { CLOCK_SAMPLES, CLOCK_SAMPLE_SECONDS, resetClockState, sim, useLab } from "@/lib/store";
 
 /** Longest animation step: below 20 fps the animation slows down instead of jumping. */
@@ -43,7 +44,8 @@ export function SimDriver() {
   }, [steps]);
 
   useFrame((_, delta) => {
-    const { mass, miraj, paused, speed } = useLab.getState();
+    const { mass, miraj, paused, speed, focus } = useLab.getState();
+    sim.stage = stageOf(focus);
     // Never trust the frame delta blindly: a negative or non-finite one would poison every value below.
     const raw = Number.isFinite(delta) && delta > 0 ? delta : 0;
 

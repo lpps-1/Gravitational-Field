@@ -33,6 +33,7 @@ export function SpacetimeGrid() {
   );
 
   useFrame(() => {
+    if (sim.stage !== "lab") return; // hidden while another stage is shown
     const line = lineRef.current;
     if (!line) return;
     // Cross-fade out while the Seven Skies take over.

@@ -7,20 +7,24 @@ import type { BloomEffect } from "postprocessing";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
-import { VIEWS, cameraApi } from "@/lib/camera";
+import { STAGE_DISTANCE, VIEWS, cameraApi, cameraFollow } from "@/lib/camera";
+import { stageOf, type Stage } from "@/lib/chapters";
 import { prefersReducedMotion, useReducedMotion } from "@/lib/hooks";
 import { TIERS, lowerTier, probeGraphics, type Tier, type TierSpec } from "@/lib/quality";
 import { useLab } from "@/lib/store";
 import { AnchorProjector } from "./AnchorProjector";
+import { BlackHole } from "./BlackHole";
 import { CentralMass } from "./CentralMass";
 import { OrbitingBodies } from "./OrbitingBodies";
 import { PhotonBeams } from "./PhotonBeams";
 import { SevenSkies } from "./SevenSkies";
 import { SimDriver } from "./SimDriver";
+import { SolarSystem } from "./SolarSystem";
 import { SpacetimeGrid } from "./SpacetimeGrid";
 import { TimeClocks } from "./TimeClocks";
 
-const NAVY = "#1F3863";
+/** Background of each stage: the lab's navy, and near-black space for the real sky. */
+const BACKGROUND: Record<Stage, string> = { lab: "#0c2246", solar: "#020509", blackhole: "#000000" };
 
 /** Background stars per starting tier (fixed for the session, so a tier change never rebuilds them). */
 const STARS: Record<Tier, number> = { high: 2500, low: 1500, cpu: 900 };
@@ -56,6 +60,7 @@ function LabCanvas() {
     [startTier],
   );
   const spec = TIERS[tier];
+  const stage = useLab((s) => stageOf(s.focus));
 
   return (
     <Canvas
@@ -68,17 +73,23 @@ function LabCanvas() {
       aria-hidden
       className="!absolute inset-0"
     >
-      <color attach="background" args={[NAVY]} />
-      <fog attach="fog" args={[NAVY, 60, 140]} />
+      <color attach="background" args={[BACKGROUND.lab]} />
+      <fog attach="fog" args={[BACKGROUND.lab, 60, 140]} />
+      <StageLook stage={stage} />
       <SimDriver />
-      <StarField count={STARS[startTier]} />
-      <SpacetimeGrid />
-      <CentralMass />
-      <OrbitingBodies />
-      <PhotonBeams />
-      <TimeClocks />
-      <SevenSkies />
-      <CameraRig damping={spec.fps ? 1 - Math.pow(1 - 0.08, 60 / spec.fps) : 0.08} />
+      <StarField count={STARS[startTier]} visible={stage !== "blackhole"} />
+      {/* The lab's objects stay mounted (their shaders are compiled once) and simply hide. */}
+      <group visible={stage === "lab"}>
+        <SpacetimeGrid />
+        <CentralMass />
+        <OrbitingBodies />
+        <PhotonBeams />
+        <TimeClocks />
+        <SevenSkies />
+      </group>
+      <SolarSystem />
+      <BlackHole />
+      <CameraRig stage={stage} damping={spec.fps ? 1 - Math.pow(1 - 0.08, 60 / spec.fps) : 0.08} />
       <AnchorProjector />
       <Effects />
       <ShaderWarmup />
@@ -124,31 +135,53 @@ function onCreated(gl: THREE.WebGLRenderer) {
 function NoWebGL() {
   useEffect(() => useLab.getState().setReady(), []);
   return (
-    <div className="absolute inset-0 flex items-center justify-center bg-navy p-6">
-      <div className="max-w-lg rounded-lg border border-line-strong bg-navy-deep p-5 text-paper">
-        <h2 className="text-lg font-semibold">3D graphics are switched off in this browser</h2>
-        <p className="mt-2 text-sm text-paper-2">
+    <div className="absolute inset-0 flex items-center justify-center bg-page p-6">
+      <div className="max-w-lg rounded-[22px] border border-white/16 bg-panel p-6 text-body">
+        <h2 className="text-lg font-bold">3D graphics are switched off in this browser</h2>
+        <p className="mt-2 text-sm text-body">
           The lab draws its 3D view with WebGL 2, which works on the processor&apos;s built-in graphics; no graphics card is
           needed. To switch it on:
         </p>
-        <ol className="mt-2 list-decimal space-y-1 ps-5 text-sm text-paper-2">
+        <ol className="mt-2 list-decimal space-y-1 ps-5 text-sm text-body">
           <li>
-            Chrome or Edge: Settings → System → turn on <strong className="text-paper">Use graphics acceleration when available</strong>,
+            Chrome or Edge: Settings → System → turn on <strong className="text-ink">Use graphics acceleration when available</strong>,
             then restart the browser.
           </li>
           <li>Update the graphics driver (Windows Update → Advanced options → Optional updates).</li>
           <li>Or open the lab in another up-to-date browser, such as Firefox.</li>
         </ol>
-        <p className="mt-3 text-xs text-paper-3">The explanations in the side panel are still available.</p>
+        <p className="mt-3 text-xs text-muted">The chapter notes are still available.</p>
       </div>
     </div>
   );
 }
 
-function StarField({ count }: { count: number }) {
+/**
+ * Background colour and fog for the stage on show. The fog is pushed out of
+ * range rather than removed, because removing it would recompile every shader.
+ */
+function StageLook({ stage }: { stage: Stage }) {
+  const scene = useThree((s) => s.scene);
+  useEffect(() => {
+    const color = BACKGROUND[stage];
+    if (scene.background instanceof THREE.Color) scene.background.set(color);
+    if (scene.fog instanceof THREE.Fog) {
+      scene.fog.color.set(color);
+      scene.fog.near = stage === "lab" ? 60 : 1e5;
+      scene.fog.far = stage === "lab" ? 140 : 2e5;
+    }
+  }, [scene, stage]);
+  return null;
+}
+
+function StarField({ count, visible }: { count: number; visible: boolean }) {
   const paused = useLab((s) => s.paused);
   const reduce = useReducedMotion();
-  return <Stars radius={120} depth={40} count={count} factor={3} saturation={0} fade speed={paused || reduce ? 0 : 0.4} />;
+  return (
+    <group visible={visible}>
+      <Stars radius={150} depth={50} count={count} factor={3} saturation={0} fade speed={paused || reduce ? 0 : 0.4} />
+    </group>
+  );
 }
 
 /** The bloom's brightness pass gains nothing from full resolution. */
@@ -355,6 +388,7 @@ function AdaptiveQuality() {
 /* ------------------------------------------------------------------------ */
 
 const FLIGHT_SECONDS = 1.2;
+const followDelta = new THREE.Vector3();
 
 /**
  * OrbitControls (drag to rotate 360°, scroll or pinch to zoom, right-drag to
@@ -363,8 +397,10 @@ const FLIGHT_SECONDS = 1.2;
  * The projection is offset so the scene centres in the area the console
  * leaves free.
  */
-function CameraRig({ damping }: { damping: number }) {
+function CameraRig({ stage, damping }: { stage: Stage; damping: number }) {
   const controls = useRef<OrbitControlsImpl>(null);
+  /** Last followed position, so the camera moves with the body it follows. */
+  const followed = useRef(new THREE.Vector3());
   const get = useThree((s) => s.get);
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera;
   const size = useThree((s) => s.size);
@@ -376,6 +412,8 @@ function CameraRig({ damping }: { damping: number }) {
     fromTarget: THREE.Vector3;
     toPos: THREE.Vector3;
     toTarget: THREE.Vector3;
+    /** Following a moving body: the end of the flight is this offset from it. */
+    followOffset?: THREE.Vector3;
   }>(null);
 
   // Centre the scene in the uncovered part of the window.
@@ -404,8 +442,18 @@ function CameraRig({ damping }: { damping: number }) {
     const c = controls.current;
     if (!c || view.nonce === 0) return;
     const preset = VIEWS[view.name];
-    const toPos = new THREE.Vector3(...preset.position);
-    const toTarget = new THREE.Vector3(...preset.target);
+    let toPos = new THREE.Vector3(...preset.position);
+    let toTarget = new THREE.Vector3(...preset.target);
+    let followOffset: THREE.Vector3 | undefined;
+    if (view.name === "planet" && cameraFollow.active) {
+      // Keep looking from the current side, a little above, at the body's own viewing distance.
+      followed.current.copy(cameraFollow.position);
+      followOffset = camera.position.clone().sub(cameraFollow.position).setY(0);
+      if (followOffset.lengthSq() < 1e-6) followOffset.set(0, 0, 1);
+      followOffset.normalize().setY(0.35).setLength(cameraFollow.distance);
+      toTarget = cameraFollow.position.clone();
+      toPos = toTarget.clone().add(followOffset);
+    }
     const { width, height } = get().size;
     const aspect = width / Math.max(1, height);
     if (aspect < 1.2)
@@ -419,7 +467,7 @@ function CameraRig({ damping }: { damping: number }) {
       c.update();
       flight.current = null;
     } else {
-      flight.current = { t: 0, fromPos: camera.position.clone(), fromTarget: c.target.clone(), toPos, toTarget };
+      flight.current = { t: 0, fromPos: camera.position.clone(), fromTarget: c.target.clone(), toPos, toTarget, followOffset };
     }
   }, [view, camera, get]);
 
@@ -453,7 +501,20 @@ function CameraRig({ damping }: { damping: number }) {
   useFrame((_, raw) => {
     const f = flight.current;
     const c = controls.current;
-    if (!f || !c) return;
+    if (!c) return;
+    // Follow a moving body: carry the camera along with it.
+    if (useLab.getState().view.name === "planet" && cameraFollow.active) {
+      const delta = followDelta.copy(cameraFollow.position).sub(followed.current);
+      followed.current.copy(cameraFollow.position);
+      if (f?.followOffset) {
+        f.toTarget.copy(cameraFollow.position);
+        f.toPos.copy(cameraFollow.position).add(f.followOffset);
+      } else {
+        camera.position.add(delta);
+        c.target.add(delta);
+      }
+    }
+    if (!f) return;
     f.t = Math.min(1, f.t + Math.min(raw, 0.1) / FLIGHT_SECONDS);
     const k = f.t < 0.5 ? 4 * f.t * f.t * f.t : 1 - Math.pow(-2 * f.t + 2, 3) / 2;
     camera.position.lerpVectors(f.fromPos, f.toPos, k);
@@ -468,8 +529,10 @@ function CameraRig({ damping }: { damping: number }) {
       makeDefault
       enableDamping
       dampingFactor={damping}
-      minDistance={3}
-      maxDistance={95}
+      minDistance={STAGE_DISTANCE[stage][0]}
+      maxDistance={STAGE_DISTANCE[stage][1]}
+      // The black hole picture assumes the camera looks at the hole from outside the disk.
+      enablePan={stage !== "blackhole"}
       target={VIEWS.overview.target}
       onStart={() => {
         flight.current = null;

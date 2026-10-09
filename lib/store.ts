@@ -1,11 +1,33 @@
 import { create } from "zustand";
 import { AIM_DEFAULT, AIM_MAX, AIM_MIN } from "./physics";
+import { CHAPTERS, stageOf, type Stage } from "./chapters";
 import { resolveTier, type QualityMode, type Tier } from "./quality";
 
 export type { QualityMode, Tier };
 
-export type ModuleId = "A" | "B" | "C" | "D";
-export type ViewName = "overview" | "top" | "side" | "clocks" | "skies" | "under";
+/** Chapters: A curved space · B bending light · C slow clocks · S Solar System · H black hole · D seven skies. */
+export type ModuleId = "A" | "B" | "C" | "S" | "H" | "D";
+export type ViewName =
+  | "overview"
+  | "top"
+  | "side"
+  | "clocks"
+  | "skies"
+  | "under"
+  | "solar"
+  | "solarTop"
+  | "planet"
+  | "bh"
+  | "bhTop";
+/** Bodies of the Solar System chapter. */
+export type BodyId = "sun" | "mercury" | "venus" | "earth" | "mars" | "jupiter" | "saturn" | "uranus" | "neptune";
+/** Solar System clock rates, in days per real second. */
+export const SOLAR_SPEEDS = [1, 7, 30, 365] as const;
+export type SolarSpeed = (typeof SOLAR_SPEEDS)[number];
+/** Black hole chapter: the hovering clock's distance from the centre, in horizon radii. */
+export const BH_RADIUS_MIN = 1.01;
+export const BH_RADIUS_MAX = 20;
+export const BH_RADIUS_DEFAULT = 1.5;
 export type DialogId = "about" | "keys" | "settings";
 export type Speed = 0.25 | 1;
 
@@ -31,10 +53,13 @@ const DEFAULT_SETTINGS: Settings = {
   quality: "auto",
   glow: true,
   reduceMotion: false,
-  crt: true,
+  crt: false,
   shortcuts: true,
   textSize: 1,
 };
+
+/** Bumped when a default changes in a way saved settings should follow (2: scanlines off by default). */
+const SETTINGS_VERSION = 2;
 
 export const DEFAULT_MASS = 55;
 const SETTINGS_KEY = "spacetime-lab:settings:v1";
@@ -43,7 +68,11 @@ function loadSettings(): Settings {
   if (typeof window === "undefined") return DEFAULT_SETTINGS;
   try {
     const raw = window.localStorage.getItem(SETTINGS_KEY);
-    return raw ? { ...DEFAULT_SETTINGS, ...JSON.parse(raw) } : DEFAULT_SETTINGS;
+    if (!raw) return DEFAULT_SETTINGS;
+    const { v, ...saved } = JSON.parse(raw) as Partial<Settings> & { v?: number };
+    // Settings saved before the redesign still had the retro scanlines on.
+    if ((v ?? 1) < 2) delete saved.crt;
+    return { ...DEFAULT_SETTINGS, ...saved };
   } catch {
     return DEFAULT_SETTINGS;
   }
@@ -51,7 +80,7 @@ function loadSettings(): Settings {
 
 function saveSettings(settings: Settings) {
   try {
-    window.localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    window.localStorage.setItem(SETTINGS_KEY, JSON.stringify({ ...settings, v: SETTINGS_VERSION }));
   } catch {
     // Private mode or storage disabled: settings simply won't persist.
   }
@@ -74,8 +103,19 @@ interface LabState {
   clockResets: number;
   /** Increments on Reset all. */
   resets: number;
-  /** Which module the explanation tabs show. */
+  /** The chapter on show (explanation, controls, and the 3D stage). */
   focus: ModuleId;
+  /** Solar System chapter. */
+  solarSpeed: SolarSpeed;
+  solarFocus: BodyId | null;
+  /** Increments for "Back to today". */
+  solarResets: number;
+  /** Black hole chapter. */
+  bhRadius: number;
+  /** Fast-forward the three clocks (one year per ten seconds). */
+  bhTimelapse: boolean;
+  /** Increments to set the three clocks to zero. */
+  bhResets: number;
   /** Simulation time controls. */
   paused: boolean;
   speed: Speed;
@@ -112,6 +152,14 @@ interface LabState {
   resetClocks: () => void;
   resetAll: () => void;
   setFocus: (focus: ModuleId) => void;
+  /** Open a chapter from the navigation: shows its stage and flies to its view. */
+  goToChapter: (id: ModuleId) => void;
+  setSolarSpeed: (speed: SolarSpeed) => void;
+  setSolarFocus: (body: BodyId | null) => void;
+  resetSolar: () => void;
+  setBhRadius: (r: number) => void;
+  setBhTimelapse: (on: boolean) => void;
+  resetBhClocks: () => void;
   togglePause: () => void;
   setPaused: (paused: boolean) => void;
   step: () => void;
@@ -146,6 +194,12 @@ export const useLab = create<LabState>((set, get) => ({
   clockResets: 0,
   resets: 0,
   focus: "A",
+  solarSpeed: 7,
+  solarFocus: null,
+  solarResets: 0,
+  bhRadius: BH_RADIUS_DEFAULT,
+  bhTimelapse: false,
+  bhResets: 0,
   paused: false,
   speed: 1,
   steps: 0,
@@ -171,8 +225,9 @@ export const useLab = create<LabState>((set, get) => ({
   },
   toggleMiraj: () => get().setMiraj(!get().miraj),
   firePhoton: () => {
-    // Shots fired behind the loading screen would be hidden again by the shader warm-up.
-    if (!get().ready) return;
+    // Shots fired behind the loading screen would be hidden again by the shader warm-up;
+    // the photon beam lives on the lab stage only.
+    if (!get().ready || stageOf(get().focus) !== "lab") return;
     set((s) => ({ photonShots: s.photonShots + 1, focus: s.miraj ? "D" : "B" }));
   },
   clearPaths: () => set((s) => ({ pathClears: s.pathClears + 1 })),
@@ -188,6 +243,12 @@ export const useLab = create<LabState>((set, get) => ({
       paused: false,
       speed: 1,
       focus: "A",
+      solarSpeed: 7,
+      solarFocus: null,
+      solarResets: s.solarResets + 1,
+      bhRadius: BH_RADIUS_DEFAULT,
+      bhTimelapse: false,
+      bhResets: s.bhResets + 1,
       resets: s.resets + 1,
       pathClears: s.pathClears + 1,
       clockResets: s.clockResets + 1,
@@ -198,6 +259,37 @@ export const useLab = create<LabState>((set, get) => ({
     get().announce("Simulation reset.");
   },
   setFocus: (focus) => set({ focus }),
+  goToChapter: (id) => {
+    const s = get();
+    const ch = CHAPTERS.find((c) => c.id === id)!;
+    // The Miraj belongs to its own chapter: opening it engages the Miraj, leaving it folds the skies away.
+    const miraj = id === "D";
+    set({ focus: id, miraj, view: { name: ch.view, nonce: s.view.nonce + 1 }, solarFocus: id === "S" ? s.solarFocus : null });
+    const engaged = miraj && !s.miraj ? " Miraj engaged: the seven skies are separating." : "";
+    if (s.focus !== id || engaged) get().announce(`Chapter ${ch.number}: ${ch.short}.${engaged}`);
+  },
+  setSolarSpeed: (solarSpeed) => {
+    if (get().solarSpeed === solarSpeed) return;
+    set({ solarSpeed });
+    const label = solarSpeed === 1 ? "one day" : solarSpeed === 7 ? "one week" : solarSpeed === 30 ? "one month" : "one year";
+    get().announce(`Solar System clock: ${label} per second.`);
+  },
+  setSolarFocus: (solarFocus) =>
+    set((s) => ({ solarFocus, view: { name: solarFocus ? "planet" : "solar", nonce: s.view.nonce + 1 } })),
+  resetSolar: () => {
+    set((s) => ({ solarResets: s.solarResets + 1 }));
+    get().announce("The planets are back where they are today.");
+  },
+  setBhRadius: (r) => set({ bhRadius: Math.round(Math.max(BH_RADIUS_MIN, Math.min(BH_RADIUS_MAX, r)) * 100) / 100 }),
+  setBhTimelapse: (bhTimelapse) => {
+    if (get().bhTimelapse === bhTimelapse) return;
+    set({ bhTimelapse });
+    get().announce(bhTimelapse ? "Time-lapse on: one year every ten seconds." : "Time-lapse off: real time.");
+  },
+  resetBhClocks: () => {
+    set((s) => ({ bhResets: s.bhResets + 1 }));
+    get().announce("The three clocks are set to zero.");
+  },
   togglePause: () => get().setPaused(!get().paused),
   setPaused: (paused) => {
     if (get().paused === paused) return;
@@ -288,7 +380,20 @@ export const sim = {
   transitActive: false,
   /** Highest sky the tunnel light has passed during the current transit (-1 = none). */
   skyPassed: -1,
+  /** The stage on show; lab objects skip their per-frame work on the others. */
+  stage: "lab" as Stage,
+  /** Solar System date, in days since J2000.0 (2000-01-01 12:00 TT). */
+  solarDay: daysSinceJ2000(new Date()),
+  /** The three clocks of the black hole chapter, in seconds of their own time. */
+  bhDeep: 0,
+  bhSun: 0,
+  bhHole: 0,
 };
+
+/** Days since J2000.0 for a calendar date (UTC; the few seconds to TT do not matter here). */
+export function daysSinceJ2000(date: Date): number {
+  return (date.getTime() - Date.UTC(2000, 0, 1, 12, 0, 0)) / 86_400_000;
+}
 
 /** Clear the clock readings and their history. */
 export function resetClockState() {
