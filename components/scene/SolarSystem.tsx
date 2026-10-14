@@ -6,6 +6,7 @@ import * as THREE from "three";
 import { getAnchor, type Anchor } from "@/lib/anchors";
 import { cameraFollow } from "@/lib/camera";
 import { stageOf } from "@/lib/chapters";
+import { fabricState, framingDistance, wellBottom } from "@/lib/fabric";
 import { TIERS, type Tier } from "@/lib/quality";
 import {
   BODIES,
@@ -30,6 +31,7 @@ import {
 } from "@/lib/solar";
 import { daysSinceJ2000, sim, useLab, type BodyId } from "@/lib/store";
 import { haloTexture } from "./Halo";
+import { SolarFabric } from "./SolarFabric";
 
 /**
  * Chapter S: the real Solar System, on today's date.
@@ -722,7 +724,7 @@ export function SolarSystem() {
   useEffect(
     () =>
       useLab.subscribe((s, prev) => {
-        if (s.solarFocus !== prev.solarFocus) writeFollow(s.solarFocus, state.points);
+        if (s.solarFocus !== prev.solarFocus || s.solarFabric !== prev.solarFabric) writeFollow(s.solarFocus, state.points);
         // Leaving the chapter under a hovered body: the pointer-out only comes with the next move.
         if (state.hover && stageOf(s.focus) !== "solar") {
           state.hover = 0;
@@ -886,6 +888,7 @@ export function SolarSystem() {
       ))}
       <points geometry={a.beltGeometry} material={a.beltMaterial} frustumCulled={false} />
       <points geometry={a.markerGeometry} material={a.markerMaterial} frustumCulled={false} />
+      <SolarFabric points={state.points} />
     </group>
   );
 }
@@ -934,6 +937,9 @@ function placeTarget(hit: THREE.Mesh | null, radius: number, distance: number, p
   hit.scale.setScalar(Math.max(radius * 1.15, (MIN_TARGET_PX * distance) / pxPerUnitAt1));
 }
 
+const followSide = new THREE.Vector3();
+const followOut = new THREE.Vector3();
+
 /** Hand the followed body's position and viewing distance to the camera rig. */
 function writeFollow(id: BodyId | null, points: OrbitPoint[]) {
   if (!id) {
@@ -947,5 +953,21 @@ function writeFollow(id: BodyId | null, points: OrbitPoint[]) {
     cameraFollow.position.set(p.x, p.y, p.z);
   }
   cameraFollow.distance = followDistance(id);
+  cameraFollow.side = null;
+  // With the gravity fabric on, look halfway down to the bottom of the body's well, from far enough
+  // back to see both. The aim eases with the fabric; the distance is set for where it is heading.
+  const i = id === "sun" ? -1 : PLANET_IDS.indexOf(id);
+  const pos = cameraFollow.position;
+  const top = pos.y;
+  if (fabricState.grow > 0) pos.y -= ((top - wellBottom(i, pos.x, pos.z, fabricState.grow)) / 2) * fabricState.grow;
+  if (useLab.getState().solarFabric) {
+    cameraFollow.distance = Math.max(cameraFollow.distance, framingDistance(visualRadius(id), top - wellBottom(i, pos.x, pos.z, 1)));
+    // From that far back the Sun could block the view: look from just ahead of the planet on its
+    // orbit, a little towards the Sun, so it is half lit and the Sun stays to one side.
+    if (i >= 0) {
+      followOut.set(pos.x, 0, pos.z).normalize();
+      cameraFollow.side = followSide.set(followOut.z, 0, -followOut.x).addScaledVector(followOut, -0.35).normalize();
+    }
+  }
   cameraFollow.active = true;
 }

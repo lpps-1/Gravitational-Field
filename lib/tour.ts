@@ -112,7 +112,7 @@ export const TOUR: TourStep[] = [
   {
     title: "Our Solar System, today",
     body: "Now the real thing. The Sun's mass curves spacetime, and eight planets follow that curve. Each one is drawn where it really is today, from NASA's orbital data.",
-    look: "The clock runs at one week per second: Mercury goes round the Sun in about 13 seconds, Neptune hardly moves.",
+    look: "The grid underneath is spacetime: the Sun sinks a deep well, and each planet makes a dent that moves with it. The clock runs at one week per second: Mercury goes round the Sun in about 13 seconds, Neptune hardly moves.",
     verse: "“…all [heavenly bodies] in an orbit are swimming” (Al-Anbiyāʾ 21:33).",
     module: "S",
     view: "solar",
@@ -120,6 +120,7 @@ export const TOUR: TourStep[] = [
       lab.setMiraj(false);
       lab.setSolarSpeed(7);
       lab.setSolarFocus(null);
+      lab.setSolarFabric(true);
       lab.resetSolar();
     },
   },

@@ -12,7 +12,7 @@ import { useLab } from "./store";
  * can be switched off in Settings. Alt+Shift+<the same key> always works, as
  * in PhET simulations; Reset all is only Alt+Shift+Backspace.
  * Page Down / Page Up step through the tour, so presentation clickers work.
- * 1 to 6 open the chapters.
+ * 1 to 6 open the chapters. G switches the Solar System's gravity fabric.
  */
 const CONTROLS =
   'input,textarea,select,button,a[href],summary,[role=tab],[role=switch],[role=radio],[role=slider],[contenteditable="true"]';
@@ -90,6 +90,11 @@ export function useShortcuts() {
           break;
         case "l":
           if (once) lab.updateSettings({ labels: !lab.settings.labels });
+          break;
+        case "g":
+          // Only where the fabric is on show.
+          if (lab.focus !== "S") handled = false;
+          else if (once) lab.setSolarFabric(!lab.solarFabric);
           break;
         case "h":
           if (once) lab.togglePanel();

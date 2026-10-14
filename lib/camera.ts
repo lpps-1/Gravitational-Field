@@ -40,6 +40,8 @@ export const cameraFollow = {
   position: new THREE.Vector3(),
   /** Suggested viewing distance for the followed body. */
   distance: 6,
+  /** Side to look from (horizontal unit vector), or null to keep the camera's current side. */
+  side: null as THREE.Vector3 | null,
 };
 
 /**

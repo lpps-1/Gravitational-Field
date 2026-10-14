@@ -16,7 +16,7 @@ import {
   surfaceGravity,
 } from "@/lib/solar";
 import { SOLAR_SPEEDS, sim, useLab, type BodyId, type SolarSpeed } from "@/lib/store";
-import { Button, Kicker, Readout, Segmented } from "../controls";
+import { Button, Kicker, Readout, Segmented, Switch } from "../controls";
 import { ChevronDownIcon } from "../icons";
 
 /**
@@ -29,12 +29,24 @@ const SPEED_LABEL: Record<SolarSpeed, string> = { 1: "1 day", 7: "1 week", 30: "
 const SPEED_SHORT: Record<SolarSpeed, string> = { 1: "Day", 7: "Week", 30: "Month", 365: "Year" };
 const SPEED_OPTIONS = SOLAR_SPEEDS.map((v) => ({ value: v, label: SPEED_SHORT[v], name: `${SPEED_LABEL[v]} per second` }));
 
+const FABRIC_DESCRIPTION = "Show spacetime under the orbits: the Sun's deep well, and each planet's dent moving with it";
+
 export function SolarDock() {
   const focus = useLab((s) => s.solarFocus);
   const speed = useLab((s) => s.solarSpeed);
+  const fabric = useLab((s) => s.solarFabric);
   const followId = useId();
   return (
     <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2">
+      <Switch
+        variant="inline"
+        checked={fabric}
+        onChange={(on) => useLab.getState().setSolarFabric(on)}
+        label="Gravity fabric"
+        description={FABRIC_DESCRIPTION}
+        shortcut="G"
+        keyshortcuts="G"
+      />
       <Segmented label="Solar System clock" options={SPEED_OPTIONS} value={speed} onChange={(v) => useLab.getState().setSolarSpeed(v)} suffix="per second" />
       <div className="relative flex min-h-9 items-center rounded-full border border-rule-strong bg-panel/60 ps-3.5 hover:border-white pointer-coarse:min-h-11">
         <label htmlFor={followId} className="text-xs text-muted">
@@ -97,11 +109,22 @@ export function SolarLive() {
     const y = solarYear(sim.solarDay);
     return y < ELEMENTS_VALID[0] || y > ELEMENTS_VALID[1];
   });
+  const fabric = useLab((s) => s.solarFabric);
   const headingId = useId();
 
   return (
     <section aria-labelledby={headingId}>
-      <Kicker id={headingId}>Date in the simulation</Kicker>
+      <Switch
+        checked={fabric}
+        onChange={(on) => useLab.getState().setSolarFabric(on)}
+        label="Gravity fabric"
+        description={FABRIC_DESCRIPTION}
+        shortcut="G"
+        keyshortcuts="G"
+      />
+      <Kicker id={headingId} className="mt-4">
+        Date in the simulation
+      </Kicker>
       <p className="mt-1.5 font-display text-[1.75rem] leading-tight font-bold text-ink tabular-nums">{date}</p>
       <p className="text-sm text-muted">{paused ? "Paused" : `${SPEED_LABEL[speed]} every second`}</p>
       <TodayButton className="mt-2.5" />

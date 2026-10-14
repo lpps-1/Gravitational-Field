@@ -146,6 +146,7 @@ const KEYS: [string, string][] = [
   ["1 to 6", "Open a chapter"],
   ["Space", "Fire light (through the tunnel during the Miraj)"],
   ["M", "Engage or disengage the Miraj"],
+  ["G", "Gravity fabric on or off (Solar System)"],
   ["P", "Play or pause"],
   [".", "Step forward while paused"],
   ["S", "Switch between normal speed and slow motion"],

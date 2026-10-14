@@ -28,6 +28,7 @@ export type LegendSwatch =
   | "tunnelLight"
   | "sun"
   | "planet"
+  | "fabric"
   | "planetOrbit"
   | "belt"
   | "shadow"
@@ -140,6 +141,7 @@ export const MODULES: Record<ModuleId, ModuleContent> = {
       "Gravity slows clocks here too. A clock on the Sun's surface loses about 67 seconds a year compared with one in deep space; on Earth's surface, Earth's own gravity costs about 0.02 seconds a year.",
     ],
     tryIt: [
+      "Switch on Gravity fabric (G): the Sun sinks a deep well in spacetime and each planet makes a dent of its own. Speed up the clock and watch the dents travel with the planets.",
       "Choose a planet to follow it and read its facts.",
       "Speed up the clock: the inner planets lap the outer ones.",
       "Press “Back to today” to put every planet where it is right now.",
@@ -150,11 +152,15 @@ export const MODULES: Record<ModuleId, ModuleContent> = {
       reference: "Al-Anbiyāʾ 21:33",
     },
     scale:
-      "Not to scale: sizes are enlarged and distances compressed so that all eight planets fit on screen. Positions, orbits, tilts and periods are real.",
+      "Not to scale: sizes are enlarged and distances compressed so that all eight planets fit on screen. Positions, orbits, tilts and periods are real. The gravity fabric's dents are not to scale either: the Sun's well is really about 1,000 times deeper than Jupiter's dent and 330,000 times deeper than Earth's, so the dents are drawn on a compressed scale that keeps their order.",
     legend: [
       { swatch: "sun", text: "The Sun, at the centre." },
       { swatch: "planet", text: "The eight planets, with their real surfaces and tilts." },
       { swatch: "planetOrbit", text: "Thin rings: each planet's real orbit." },
+      {
+        swatch: "fabric",
+        text: "Gravity fabric (when on): spacetime, under the orbits. The Sun sinks a deep well; each planet's dent, in its colour, moves with it, and a thin line drops from the planet into its dent.",
+      },
       { swatch: "belt", text: "Dust between Mars and Jupiter: the asteroid belt." },
     ],
   },

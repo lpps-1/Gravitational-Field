@@ -110,6 +110,8 @@ interface LabState {
   /** Solar System chapter. */
   solarSpeed: SolarSpeed;
   solarFocus: BodyId | null;
+  /** Gravity fabric: spacetime drawn under the orbits, with the Sun's well and each planet's dent. */
+  solarFabric: boolean;
   /** Increments for "Back to today". */
   solarResets: number;
   /** Black hole chapter. */
@@ -159,6 +161,7 @@ interface LabState {
   goToChapter: (id: ModuleId) => void;
   setSolarSpeed: (speed: SolarSpeed) => void;
   setSolarFocus: (body: BodyId | null) => void;
+  setSolarFabric: (on: boolean) => void;
   resetSolar: () => void;
   setBhRadius: (r: number) => void;
   setBhTimelapse: (on: boolean) => void;
@@ -200,6 +203,7 @@ export const useLab = create<LabState>((set, get) => ({
   focus: "A",
   solarSpeed: 7,
   solarFocus: null,
+  solarFabric: false,
   solarResets: 0,
   bhRadius: BH_RADIUS_DEFAULT,
   bhTimelapse: false,
@@ -251,6 +255,7 @@ export const useLab = create<LabState>((set, get) => ({
       focus: "A",
       solarSpeed: 7,
       solarFocus: null,
+      solarFabric: false,
       solarResets: s.solarResets + 1,
       bhRadius: BH_RADIUS_DEFAULT,
       bhTimelapse: false,
@@ -282,6 +287,16 @@ export const useLab = create<LabState>((set, get) => ({
   },
   setSolarFocus: (solarFocus) =>
     set((s) => ({ solarFocus, view: { name: solarFocus ? "planet" : "solar", nonce: s.view.nonce + 1 } })),
+  setSolarFabric: (solarFabric) => {
+    if (get().solarFabric === solarFabric) return;
+    // While following a body, fly to a framing that shows (or no longer needs to show) its well.
+    set((s) => ({ solarFabric, view: s.solarFocus ? { name: "planet", nonce: s.view.nonce + 1 } : s.view }));
+    get().announce(
+      solarFabric
+        ? "Gravity fabric on: the Sun sinks a deep well in spacetime, and each planet makes a dent that moves with it."
+        : "Gravity fabric off.",
+    );
+  },
   resetSolar: () => {
     set((s) => ({ solarResets: s.solarResets + 1 }));
     get().announce("The planets are back where they are today.");

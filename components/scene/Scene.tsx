@@ -389,6 +389,12 @@ function AdaptiveQuality() {
 
 const FLIGHT_SECONDS = 1.2;
 const followDelta = new THREE.Vector3();
+const UP = new THREE.Vector3(0, 1, 0);
+
+/** An angle difference brought into −π…π. */
+function wrapAngle(a: number) {
+  return Math.atan2(Math.sin(a), Math.cos(a));
+}
 
 /**
  * OrbitControls (drag to rotate 360°, scroll or pinch to zoom, right-drag to
@@ -401,6 +407,8 @@ function CameraRig({ stage, damping }: { stage: Stage; damping: number }) {
   const controls = useRef<OrbitControlsImpl>(null);
   /** Last followed position, so the camera moves with the body it follows. */
   const followed = useRef(new THREE.Vector3());
+  /** Bearing of the last preferred side (cameraFollow.side), so the camera turns with it; NaN = none. */
+  const sideBearing = useRef(Number.NaN);
   const get = useThree((s) => s.get);
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera;
   const size = useThree((s) => s.size);
@@ -448,7 +456,8 @@ function CameraRig({ stage, damping }: { stage: Stage; damping: number }) {
     if (view.name === "planet" && cameraFollow.active) {
       // Keep looking from the current side, a little above, at the body's own viewing distance.
       followed.current.copy(cameraFollow.position);
-      followOffset = camera.position.clone().sub(cameraFollow.position).setY(0);
+      followOffset = cameraFollow.side ? cameraFollow.side.clone() : camera.position.clone().sub(cameraFollow.position).setY(0);
+      sideBearing.current = cameraFollow.side ? Math.atan2(cameraFollow.side.x, cameraFollow.side.z) : Number.NaN;
       if (followOffset.lengthSq() < 1e-6) followOffset.set(0, 0, 1);
       followOffset.normalize().setY(0.35).setLength(cameraFollow.distance);
       toTarget = cameraFollow.position.clone();
@@ -506,14 +515,24 @@ function CameraRig({ stage, damping }: { stage: Stage; damping: number }) {
     if (useLab.getState().view.name === "planet" && cameraFollow.active) {
       const delta = followDelta.copy(cameraFollow.position).sub(followed.current);
       followed.current.copy(cameraFollow.position);
+      // A preferred side turns with the body as it orbits (the gravity fabric's view): turn the camera with it.
+      const side = cameraFollow.side;
+      const bearing = side ? Math.atan2(side.x, side.z) : Number.NaN;
+      const turn = Number.isNaN(bearing) || Number.isNaN(sideBearing.current) ? 0 : wrapAngle(bearing - sideBearing.current);
+      sideBearing.current = bearing;
       if (f?.followOffset) {
+        if (turn) f.followOffset.applyAxisAngle(UP, turn);
         f.toTarget.copy(cameraFollow.position);
         f.toPos.copy(cameraFollow.position).add(f.followOffset);
       } else {
         camera.position.add(delta);
         c.target.add(delta);
+        if (turn) {
+          camera.position.sub(c.target).applyAxisAngle(UP, turn).add(c.target);
+          c.update();
+        }
       }
-    }
+    } else sideBearing.current = Number.NaN;
     if (!f) return;
     f.t = Math.min(1, f.t + Math.min(raw, 0.1) / FLIGHT_SECONDS);
     const k = f.t < 0.5 ? 4 * f.t * f.t * f.t : 1 - Math.pow(-2 * f.t + 2, 3) / 2;

@@ -110,6 +110,12 @@ const SWATCH: Record<LegendSwatch, React.ReactNode> = {
   sun: <span className="h-4 w-4 rounded-full shadow-[0_0_10px_#ff9a3c]" style={{ background: "radial-gradient(circle at 40% 40%,#fff4c8,#ffb347 55%,#e8661c)" }} />,
   planet: <span className="h-3 w-3 rounded-full" style={{ background: "radial-gradient(circle at 30% 30%,#a9cbff,#3b66b0 60%,#0d1f3d)" }} />,
   planetOrbit: <span className="h-3 w-6 rounded-[50%] border border-[#6ea8ff]/80" />,
+  fabric: (
+    <span
+      className="h-3 w-6 rounded-b-full border-b-2 border-[#9fd3ff]"
+      style={{ background: "radial-gradient(circle at 50% 100%,rgb(255 180 90/0.8),transparent 70%)" }}
+    />
+  ),
   belt: <span className="h-0 w-6 border-t-2 border-dotted border-[#a8957c]" />,
   shadow: <span className="h-4 w-4 rounded-full bg-black shadow-[0_0_0_1.5px_#ffd9a0]" />,
   photonRing: <span className="h-4 w-4 rounded-full border-2 border-[#ffe3b3] shadow-[0_0_6px_#ffb066]" />,
