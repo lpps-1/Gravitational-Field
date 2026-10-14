@@ -168,6 +168,7 @@ export const TOUR: TourStep[] = [
     view: "skies",
     enter: (lab) => {
       lab.setMiraj(true);
+      lab.setMirajCaption(true);
     },
   },
   {

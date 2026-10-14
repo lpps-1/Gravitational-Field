@@ -195,7 +195,7 @@ export const MODULES: Record<ModuleId, ModuleContent> = {
       "No wormhole has ever been observed, and an Einstein–Rosen bridge would pinch shut before even light could cross. Here the fold is a visual analogy for reflection on the Isrāʾ and Miʿrāj, not a scientific account of it.",
     ],
     tryIt: [
-      "Follow the four steps shown at the top of the view. Switch the Miraj off and on to watch them again.",
+      "Follow the four steps shown at the top of the view; close them (✕) to see every sky. Switch the Miraj off and on to watch them again.",
       "Press “Send light through the tunnel” (Space) to send more light; use Slow motion to follow it.",
       "Choose the view “Up the tunnel” to look straight up the throat.",
     ],

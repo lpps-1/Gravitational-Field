@@ -95,6 +95,8 @@ interface LabState {
   aim: number;
   /** Miraj / Spacetime Fold engaged. */
   miraj: boolean;
+  /** The Miraj step caption is open over the 3D view (closed, it shrinks to a small button). */
+  mirajCaption: boolean;
   /** Increments every time a photon is fired. */
   photonShots: number;
   /** Increments to clear the photon paths from the grid. */
@@ -147,6 +149,7 @@ interface LabState {
   setAim: (aim: number) => void;
   setMiraj: (on: boolean) => void;
   toggleMiraj: () => void;
+  setMirajCaption: (open: boolean) => void;
   firePhoton: () => void;
   clearPaths: () => void;
   resetClocks: () => void;
@@ -189,6 +192,7 @@ export const useLab = create<LabState>((set, get) => ({
   mass: DEFAULT_MASS,
   aim: AIM_DEFAULT,
   miraj: false,
+  mirajCaption: true,
   photonShots: 0,
   pathClears: 0,
   clockResets: 0,
@@ -224,6 +228,7 @@ export const useLab = create<LabState>((set, get) => ({
     get().announce(on ? "Miraj engaged: the seven skies are separating." : "Miraj disengaged: returning to the gravity well.");
   },
   toggleMiraj: () => get().setMiraj(!get().miraj),
+  setMirajCaption: (mirajCaption) => set({ mirajCaption }),
   firePhoton: () => {
     // Shots fired behind the loading screen would be hidden again by the shader warm-up;
     // the photon beam lives on the lab stage only.
@@ -240,6 +245,7 @@ export const useLab = create<LabState>((set, get) => ({
       mass: DEFAULT_MASS,
       aim: AIM_DEFAULT,
       miraj: false,
+      mirajCaption: true,
       paused: false,
       speed: 1,
       focus: "A",
