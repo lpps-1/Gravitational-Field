@@ -37,6 +37,17 @@ On Windows:
 - Turn the browser's Energy Saver off.
 - If the browser offers no WebGL at all, the lab says so and explains how to switch it on.
 
+### Presenter and TV (two windows)
+
+With a TV or projector connected as a second screen (extended, not mirrored), one window can drive another:
+
+1. On the laptop, open **http://localhost:3000/?mode=control**. Use this window as usual. A **CONTROLLING TV** badge shows in the bar; its dot lights up while a display is following.
+2. Open **http://localhost:3000/?mode=display** in a second window, drag it to the TV and press **F11** for full screen.
+
+The display mirrors the controller: the chapter, every control, the notes, the tour, dialogs, the simulation clocks and, every frame, the camera. It ignores its own mouse and keyboard and hides the pointer. Either window can be opened first: a display asks the controller for the whole current state when it opens, and catches up whenever the controller is (re)loaded. Each window keeps its own graphics level.
+
+The two windows talk through the browser (BroadcastChannel), so they must be in the same browser on the same computer; nothing goes over the network. Scrolling inside the notes and open menus are not mirrored (what they do is). Without `?mode=`, the lab works on its own, as before.
+
 ## The six chapters
 
 Choose a chapter in the navigation bar (or press `1` to `6`). Each chapter shows one idea: its controls sit in the dock at the bottom of the 3D view, and its notes (live readouts, things to try, the science, the verse and a key to the picture) in the panel on the right, which `H` hides.
@@ -117,6 +128,8 @@ lib/credits.ts           Third-party material
 lib/tour.ts              The guided tour
 lib/quality.ts           Graphics levels and the hardware check
 lib/store.ts             UI state and per-frame simulation values
+lib/sync.ts              Presenter / TV sync (?mode=control, ?mode=display)
+lib/fabric.ts            Chapter 04: the gravity fabric's wells
 ```
 
 ## A note on accuracy

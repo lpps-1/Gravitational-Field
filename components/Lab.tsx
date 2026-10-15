@@ -9,6 +9,7 @@ import { isWideLayout, useReducedMotion, useSimValue, useWideLayout } from "@/li
 import { curvatureLevel, dilationFactor } from "@/lib/physics";
 import { formatSolarDate } from "@/lib/solar";
 import { sim, useLab } from "@/lib/store";
+import { startSync, syncMode } from "@/lib/sync";
 import { useShortcuts } from "@/lib/useShortcuts";
 import Scene from "./scene/Scene";
 import { ChapterTitle } from "./ui/ChapterTitle";
@@ -44,12 +45,16 @@ export default function Lab() {
   const captions = useShowWholeOrHide();
 
   useEffect(() => {
-    // Phones start with the notes closed, so the first thing seen is the 3D view.
-    if (!isWideLayout()) useLab.getState().setPanelOpen(false);
+    // Phones start with the notes closed, so the first thing seen is the 3D view (a display takes the controller's).
+    if (!isWideLayout() && syncMode !== "display") useLab.getState().setPanelOpen(false);
   }, []);
 
+  // Presenter / TV sync (?mode=control or ?mode=display); does nothing otherwise.
+  useEffect(() => startSync(), []);
+
   return (
-    <main className="relative h-dvh w-full overflow-hidden bg-page">
+    // A display mirrors the controller: nothing in it can be clicked, focused or typed into.
+    <main inert={syncMode === "display"} className="relative h-dvh w-full overflow-hidden bg-page">
       {/* Source order is the keyboard order: navigation, the 3D view, its captions and dock, then the notes. */}
       <Nav navRef={navRef} />
       <Stage />

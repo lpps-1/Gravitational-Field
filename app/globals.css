@@ -384,3 +384,9 @@ html[data-reduce-motion="true"] *::after {
 html:not([data-tier="high"]) .crt-sweep {
   display: none;
 }
+
+/* ?mode=display (lib/sync.ts): a passive mirror of the controller window shows no pointer. */
+html[data-sync="display"],
+html[data-sync="display"] * {
+  cursor: none !important;
+}

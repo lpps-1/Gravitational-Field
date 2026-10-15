@@ -12,6 +12,7 @@ import { stageOf, type Stage } from "@/lib/chapters";
 import { prefersReducedMotion, useReducedMotion } from "@/lib/hooks";
 import { TIERS, lowerTier, probeGraphics, type Tier, type TierSpec } from "@/lib/quality";
 import { useLab } from "@/lib/store";
+import { applyCamera, sendFrame, syncMode } from "@/lib/sync";
 import { AnchorProjector } from "./AnchorProjector";
 import { BlackHole } from "./BlackHole";
 import { CentralMass } from "./CentralMass";
@@ -448,7 +449,8 @@ function CameraRig({ stage, damping }: { stage: Stage; damping: number }) {
   // window must not pull the camera back from where the user put it.
   useEffect(() => {
     const c = controls.current;
-    if (!c || view.nonce === 0) return;
+    // A display takes the controller's camera every frame instead.
+    if (!c || view.nonce === 0 || syncMode === "display") return;
     const preset = VIEWS[view.name];
     let toPos = new THREE.Vector3(...preset.position);
     let toTarget = new THREE.Vector3(...preset.target);
@@ -510,7 +512,7 @@ function CameraRig({ stage, damping }: { stage: Stage; damping: number }) {
   useFrame((_, raw) => {
     const f = flight.current;
     const c = controls.current;
-    if (!c) return;
+    if (!c || syncMode === "display") return;
     // Follow a moving body: carry the camera along with it.
     if (useLab.getState().view.name === "planet" && cameraFollow.active) {
       const delta = followDelta.copy(cameraFollow.position).sub(followed.current);
@@ -542,10 +544,19 @@ function CameraRig({ stage, damping }: { stage: Stage; damping: number }) {
     if (f.t >= 1) flight.current = null;
   });
 
+  // Presenter / TV sync (lib/sync.ts): after the camera has moved, the controller sends it; a display takes it.
+  useFrame(() => {
+    const c = controls.current;
+    if (!syncMode || !c) return;
+    if (syncMode === "control") sendFrame(camera, c.target);
+    else applyCamera(camera, c.target);
+  });
+
   return (
     <OrbitControls
       ref={controls}
       makeDefault
+      enabled={syncMode !== "display"}
       enableDamping
       dampingFactor={damping}
       minDistance={STAGE_DISTANCE[stage][0]}

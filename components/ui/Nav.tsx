@@ -3,8 +3,10 @@
 import { useRef } from "react";
 import { CHAPTERS, chapter } from "@/lib/chapters";
 import { useLab } from "@/lib/store";
+import { syncMode } from "@/lib/sync";
 import { ChevronDownIcon, HelpIcon, InfoIcon, KeyboardIcon, MenuIcon, SettingsIcon, TourIcon } from "./icons";
 import { Popover, PopoverItem } from "./Popover";
+import { SyncBadge } from "./SyncBadge";
 
 /**
  * The floating navigation bar, as on the team site: the LPPS mark and the
@@ -18,6 +20,7 @@ export function Nav({ navRef }: { navRef: React.RefObject<HTMLElement | null> })
       className="glass @container pointer-events-auto absolute inset-x-3 top-3 z-40 flex min-h-14 items-center gap-2 rounded-[22px] py-1.5 ps-3 pe-1.5"
     >
       <Brand />
+      {syncMode === "control" && <SyncBadge />}
       <ChapterLinks />
       <ChapterPicker />
       <div className="ms-auto flex shrink-0 items-center gap-0.5">

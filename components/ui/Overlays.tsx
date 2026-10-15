@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { CHAPTERS } from "@/lib/chapters";
 import { TOUR, enterTourStep } from "@/lib/tour";
 import { useLab } from "@/lib/store";
+import { syncMode } from "@/lib/sync";
 import { Button, Kbd } from "./controls";
 import { ArrowRightIcon, CloseIcon } from "./icons";
 
@@ -78,7 +79,8 @@ function tourFallbackFocus(): HTMLElement | null {
 export function TourDriver() {
   const tour = useLab((s) => s.tour);
   useEffect(() => {
-    if (!tour.active) return;
+    // A display mirrors the controller, whose tour has already set each step up.
+    if (!tour.active || syncMode === "display") return;
     return enterTourStep(tour.step);
   }, [tour.active, tour.step]);
 
